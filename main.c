@@ -46,7 +46,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-
 #include "MAXCAM_Debug.h"
 #include "board.h"
 #include "fcr_regs.h"
