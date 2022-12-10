@@ -34,18 +34,14 @@
 
 #include "MAXCAM_Debug.h"
 #include "camera.h"
-#include "cnn.h"
-#include "embedding_process.h"
-#include "faceID.h"
+#include "img_capture.h"
 #include "led.h"
 #include "mxc_delay.h"
 #include "sema_regs.h"
 #include "tmr.h"
 #include "utils.h"
 
-/* TODO - Redefine module bc it is not face-id anymore */
-#define S_MODULE_NAME "state_faceid"
-
+#define S_MODULE_NAME "img_capture"
 
 /* **** Globals **** */
 
@@ -57,7 +53,7 @@ static void process_img(void);
 extern volatile uint32_t *arm_mail_box;
 extern volatile uint32_t *riscv_mail_box;
 
-int start_faceid(void) {
+int start_img_capture(void) {
     uint32_t run_count = 0;
 
     camera_start_capture_image();

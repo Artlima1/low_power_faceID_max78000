@@ -52,7 +52,6 @@ COMPILER=GCC
 
 # Specify the board used
 ifeq "$(BOARD)" ""
-#BOARD=EvKit_V1
 BOARD=FTHR_RevA
 endif
 
@@ -70,25 +69,10 @@ export CMSIS_ROOT
 
 # Source files for this test (add path to VPATH below)
 SRCS  = main.c
-ifeq "$(BOARD)" "EvKit_V1"
-SRCS += TFT/evkit/resources/all_imgs.c
-endif
-ifeq "$(BOARD)" "FTHR_RevA"
-SRCS += TFT/fthr/logo_rgb565.c
-SRCS += TFT/fthr/SansSerif16x16.c
-SRCS += TFT/fthr/SansSerif19x19.c
-endif
 SRCS += src/state.c
-SRCS += src/state_home.c
 
 # Where to find source files for this test
 VPATH  = .
-ifeq "$(BOARD)" "EvKit_V1"
-VPATH += ./TFT/evkit/resources
-endif
-ifeq "$(BOARD)" "FTHR_RevA"
-VPATH += TFT/fthr/
-endif
 ifeq "$(MAXIM_PATH)" ""
 VPATH += ../Common/
 else
@@ -100,9 +84,6 @@ VPATH += $(CNN_ROOT)/Common
 
 # Where to find header files for this test
 IPATH  = .
-ifeq "$(BOARD)" "EvKit_V1"
-IPATH += ./TFT/evkit/resources
-endif
 ifeq "$(MAXIM_PATH)" ""
 IPATH += ../Common/
 else
@@ -115,17 +96,6 @@ PROJ_CFLAGS+=-DARM_MATH_CM4
 
 # Enable assertion checking for development
 PROJ_CFLAGS+=-DMXC_ASSERT_ENABLE
-
-ifeq "$(BOARD)" "EvKit_V1"
-PROJ_CFLAGS+=-DROTATE_SCREEN=1
-PROJ_CFLAGS+=-DTFT_ENABLE
-PROJ_CFLAGS+=-DTS_ENABLE
-endif
-
-ifeq "$(BOARD)" "FTHR_RevA"
-# Only enable if 2.4" TFT is connected to Feather
-#PROJ_CFLAGS+=-DTFT_ENABLE
-endif
 
 # Enable all warnings
 PROJ_CFLAGS+=-Wall

@@ -31,28 +31,48 @@
  *
  ******************************************************************************/
 
-#ifndef _KEYPAD_H_
-#define _KEYPAD_H_
+#ifndef _IMG_CAPTURE_H_
+#define _IMG_CAPTURE_H_
 
-#define KEY_0 '0'
-#define KEY_1 '1'
-#define KEY_2 '2'
-#define KEY_3 '3'
-#define KEY_4 '4'
-#define KEY_5 '5'
-#define KEY_6 '6'
-#define KEY_7 '7'
-#define KEY_8 '8'
-#define KEY_9 '9'
-#define KEY_A 'A'
-#define KEY_B 'B'
-#define KEY_C 'C'
-#define KEY_D 'D'
-#define KEY_E 'E'
-#define KEY_F 'F'
+#define CAMERA_FREQ (10 * 1000 * 1000)
+// Mailboxes
+#define ARM_MAILBOX_SIZE 1
+#define RISCV_MAILBOX_SIZE 16
+// Mailbox commands
+#define START_FACEID 1
+#define STOP_FACEID 2
+#define IMAGE_READY 3
+#define RESULT_READY 4
 
-/******************************************************************************/
-int keypad_init(void);
-int keypad_getkey(void);
+#define CAPTURE_X 70
+#define CAPTURE_Y 290
+#define SKIP_X 60
+#define SKIP_Y 290
+#define RUN_X 160
+#define RUN_Y 290
+#define BACK_X 0
+#define BACK_Y 280
 
-#endif /* _KEYPAD_H_ */
+#define IMAGE_XRES 170 //200
+#define IMAGE_YRES 130 //150
+
+#define HEIGHT 160
+#define WIDTH 120
+#define THICKNESS 4
+#define IMAGE_H 130 //150
+#define IMAGE_W 170 //200
+#define FRAME_COLOR 0x535A
+
+#define X_START 45
+#define Y_START 30
+
+#define BYTE_PER_PIXEL 2
+
+#define X_IMAGE_START 45
+#define Y_IMAGE_START 30
+#define LOW_LIGHT_THRESHOLD 20
+#define FAST_FIFO // if defined, it uses fast fifo instead of fifo
+// Data input: HWC (little data): 160x120x3
+#define DATA_SIZE_IN (160 * 120 * 3)
+
+#endif // _IMG_CAPTURE_H_

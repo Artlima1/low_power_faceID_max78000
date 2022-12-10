@@ -49,8 +49,8 @@
 #include "MAXCAM_Debug.h"
 #include "board.h"
 #include "fcr_regs.h"
+#include "img_capture.h"
 #include "icc.h"
-#include "keypad.h"
 #include "lp.h"
 #include "mxc_delay.h"
 #include "rtc.h"
@@ -115,7 +115,7 @@ static int init(void) {
 /* TODO - Romove this function when states implemented */
 static int key_process(int key) {
     switch (key) {
-        case KEY_1:
+        case 1:
             state_set_current(get_home_state());
             break;
 
@@ -223,7 +223,7 @@ int main(void) {
     MXC_SYS_ClockEnable(MXC_SYS_PERIPH_CLOCK_CPU1);  // Enable RISC-V clock
 
     // Get ticks based off of milliseconds
-    MXC_WUT_GetTicks(LP_TIME, MXC_WUT_UNIT_MILLISEC, &ticks);
+    MXC_WUT_GetTicks(500, MXC_WUT_UNIT_MILLISEC, &ticks);
 
     // config structure for one shot timer to trigger in a number of ticks
     cfg.mode = MXC_WUT_MODE_ONESHOT;

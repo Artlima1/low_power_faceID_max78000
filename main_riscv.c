@@ -48,24 +48,21 @@
 #include "MAXCAM_Debug.h"
 #include "board.h"
 #include "camera.h"
-#include "cnn.h"
+#include "img_capture.h"
 #include "dma.h"
-#include "embedding_process.h"
-#include "faceID.h"
 #include "fcr_regs.h"
 #include "icc.h"
 #include "mxc.h"
 #include "mxc_delay.h"
 #include "mxc_sys.h"
 #include "sema_regs.h"
-#include "weights.h"
 
 __attribute__((section(
     ".shared__at__mailbox"))) volatile uint32_t mail_box[ARM_MAILBOX_SIZE + RISCV_MAILBOX_SIZE];
 volatile uint32_t *arm_mail_box = &mail_box[0];
 volatile uint32_t *riscv_mail_box = &mail_box[ARM_MAILBOX_SIZE];
 
-extern int start_faceid(void);
+extern int start_img_capture(void);
 
 // *****************************************************************************
 void __attribute__((interrupt("machine"))) WUT_IRQHandler(void) {
@@ -143,7 +140,7 @@ int main(void) {
             PR_DEBUG("Start FaceId");
             /* clear ARM mailbox */
             arm_mail_box[0] = 0;
-            start_faceid();
+            start_img_capture();
             asm volatile("wfi");  // RISC-V sleeps and waits for command from ARM
         }
     }

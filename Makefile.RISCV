@@ -52,7 +52,6 @@ COMPILER=GCC
 
 # Specify the board used
 ifeq "$(BOARD)" ""
-#BOARD=EvKit_V1
 BOARD=FTHR_RevA
 endif
 
@@ -73,9 +72,7 @@ export CMSIS_ROOT
 # Source files for this test (add path to VPATH below)
 SRCS  = main_riscv.c
 SRCS += src/utils.c
-SRCS += src/state_faceID.c
-SRCS += src/cnn.c
-SRCS += src/embedding_process.c
+SRCS += src/state_img_capture.c
 
 # Where to find source files for this test
 VPATH  = .
