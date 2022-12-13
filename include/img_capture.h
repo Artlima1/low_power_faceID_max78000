@@ -39,7 +39,7 @@
 #define ARM_MAILBOX_SIZE 1
 #define RISCV_MAILBOX_SIZE 16
 // Mailbox commands
-#define START_FACEID 1
+#define CAPTURE_IMG 1
 #define STOP_FACEID 2
 #define IMAGE_READY 3
 #define RESULT_READY 4

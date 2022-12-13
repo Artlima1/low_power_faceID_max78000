@@ -55,7 +55,6 @@
 #include "mxc_delay.h"
 #include "rtc.h"
 #include "sema_regs.h"
-#include "state.h"
 #include "tft_ili9341.h"
 
 /***** Definitions *****/
@@ -84,10 +83,6 @@ void WUT_IRQHandler() {
 
 /************************************ VARIABLES ******************************/
 static int init(void);
-static int key_process(int key);
-
-/* TODO - Implement the states */
-State g_state = {"faceID", init, key_process, NULL, 0};
 
 /********************************* Static Functions **************************/
 
@@ -106,33 +101,30 @@ static int init(void) {
             w = riscv_mail_box[3];
             // Clear mailbox
             riscv_mail_box[0] = 0;
+
+            // TODO - We already have the image, now what?
         }
     }
 
     return 0;
 }
 
-/* TODO - Romove this function when states implemented */
-static int key_process(int key) {
-    switch (key) {
-        case 1:
-            state_set_current(get_home_state());
+static void button_press(void * pb) {
+    int button_index = *((int *) pb);
+    switch (button_index) {
+        case 0:
+            PB_IntClear(0);
+            arm_mail_box[0] = CAPTURE_IMG;
             break;
 
         default:
             break;
     }
-
-    return 0;
 }
 
 /********************************* Public Functions **************************/
-State *get_faceID_state(void) {
-    return &g_state;
-}
 
 int main(void) {
-    State *state;
     uint32_t ticks;
     mxc_wut_cfg_t cfg;
 
@@ -239,17 +231,17 @@ int main(void) {
 
     NVIC_EnableIRQ(WUT_IRQn);
 
+    PB_Init();
+    PB_RegisterCallback(0, &button_press);
+    PB_IntEnable(0);
+
     int start = 1;
     /* Wait untill start trigger */
     while (1) {
-        /* Get current state */
-        state = state_get_current();
-
         /* TODO - Codition to start the process */
         if(start) {
             // Start Wakeup Timer in case RISC-V sleeps
             MXC_WUT_Enable();
-            arm_mail_box[0] = START_FACEID;
             init();
             start = 0;
         }
