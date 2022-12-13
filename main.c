@@ -110,16 +110,8 @@ static int init(void) {
 }
 
 static void button_press(void * pb) {
-    int button_index = *((int *) pb);
-    switch (button_index) {
-        case 0:
-            PB_IntClear(0);
-            arm_mail_box[0] = CAPTURE_IMG;
-            break;
-
-        default:
-            break;
-    }
+    PB_IntClear(0);
+    arm_mail_box[0] = CAPTURE_IMG;
 }
 
 /********************************* Public Functions **************************/

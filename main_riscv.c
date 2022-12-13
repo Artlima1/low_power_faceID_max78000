@@ -136,7 +136,7 @@ int main(void) {
     PR_DEBUG("RISC-V mailbox: %x\n", &riscv_mail_box[0]);
 
     while (1) {
-        if (arm_mail_box[0]) {
+        if (arm_mail_box[0]==CAPTURE_IMG) {
             PR_DEBUG("Start FaceId");
             /* clear ARM mailbox */
             arm_mail_box[0] = 0;
