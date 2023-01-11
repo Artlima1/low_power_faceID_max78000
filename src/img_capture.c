@@ -45,24 +45,61 @@
 
 /* **** Globals **** */
 
+#define SAD_THRESHOLD 50
+
 /********************************** Type Defines  *****************************/
 
+typedef struct {
+    uint16_t * img;
+    uint32_t size;
+    uint32_t h;
+    uint32_t w;
+} img_info_t;
+
+enum {
+    IMG_TP_BASE,
+    IMG_TP_COMP, 
+};
+
 /************************************ VARIABLES ******************************/
-static void process_img(void);
+static void store_img(uint8_t img_type);
+static uint8_t img_compare(void);
 
-extern volatile uint32_t *arm_mail_box;
-extern volatile uint32_t *riscv_mail_box;
+static img_info_t base_img = {
+    .img = NULL,
+    .h = 0,
+    .w = 0,
+    .size = 0,
+};
+static img_info_t compare_img = {
+    .img = NULL,
+    .h = 0,
+    .w = 0,
+    .size = 0
+};
 
-int start_img_capture(void) {
-    uint32_t run_count = 0;
+uint8_t img_capture(uint8_t capture_mode) {
+    uint8_t ret = IMG_CAP_RET_ERROR;
 
     camera_start_capture_image();
 
-    while (1) {  // Capture image and run CNN
-
+    while (1) {
         /* Check if camera image is ready to process */
         if (camera_is_image_rcv()) {
-            process_img();
+            switch (capture_mode) {
+            case IMAGE_CAPTURE_BASE: {
+                store_img(IMG_TP_BASE);
+                ret = IMG_CAP_RET_SUCCESS;
+                break;
+            }
+            case IMAGE_CAPTURE_COMPARE: {
+                store_img(IMG_TP_COMP);
+                ret = img_compare() ? IMG_CAP_RET_CHANGE : IMG_CAP_RET_NO_CHANGE;
+                break;
+            }
+            default:
+                break;
+            }
             break;
         }
     }
@@ -70,98 +107,38 @@ int start_img_capture(void) {
     return 0;
 }
 
-static void process_img(void) {
-    uint32_t pass_time = 0;
-    uint32_t imgLen;
-    uint32_t w, h;
-    int ret, lum;
-    uint16_t *image;
+static void store_img(uint8_t img_type){
     uint8_t *raw;
+    img_info_t * dest;
+
+    switch (img_type)
+    {
+        case IMG_TP_BASE:
+            dest = &base_img;
+            break;
+        case IMG_TP_COMP:
+            dest = &compare_img;
+            break;
+    }
+
+    if(dest->size != 0){
+        free(dest->img);
+    }
 
     // Get the details of the image from the camera driver.
-    camera_get_image(&raw, &imgLen, &w, &h);
-    // Send the image through the UART to the console.
-    // "grab_image" python program will read from the console and write to an image file.
-    utils_send_img_to_pc(raw, imgLen, w, h, camera_get_pixel_format());
+    camera_get_image(&raw, &dest->size, &dest->w, &dest->h);
+    dest->img = (uint16_t * ) malloc(dest->size);
+    memcpy(dest->img, raw, dest->size);
 
-    pass_time = utils_get_time_ms();
+}
 
-    image = (uint16_t *)raw;  // 2bytes per pixel RGB565
-
-    // left line
-    image += ((IMAGE_H - (WIDTH + 2 * THICKNESS)) / 2) * IMAGE_W;
-
-    for (int i = 0; i < THICKNESS; i++) {
-        image += ((IMAGE_W - (HEIGHT + 2 * THICKNESS)) / 2);
-
-        for (int j = 0; j < HEIGHT + 2 * THICKNESS; j++) {
-            *(image++) = FRAME_COLOR;  // color
-        }
-
-        image += ((IMAGE_W - (HEIGHT + 2 * THICKNESS)) / 2);
-    }
-
-    // right line
-    image = ((uint16_t *)raw) +
-            (((IMAGE_H - (WIDTH + 2 * THICKNESS)) / 2) + WIDTH + THICKNESS) * IMAGE_W;
-
-    for (int i = 0; i < THICKNESS; i++) {
-        image += ((IMAGE_W - (HEIGHT + 2 * THICKNESS)) / 2);
-
-        for (int j = 0; j < HEIGHT + 2 * THICKNESS; j++) {
-            *(image++) = FRAME_COLOR;  // color
-        }
-
-        image += ((IMAGE_W - (HEIGHT + 2 * THICKNESS)) / 2);
-    }
-
-    // top + bottom lines
-    image = ((uint16_t *)raw) + ((IMAGE_H - (WIDTH + 2 * THICKNESS)) / 2) * IMAGE_W;
-
-    for (int i = 0; i < WIDTH + 2 * THICKNESS; i++) {
-        image += ((IMAGE_W - (HEIGHT + 2 * THICKNESS)) / 2);
-
-        for (int j = 0; j < THICKNESS; j++) {
-            *(image++) = FRAME_COLOR;  // color
-        }
-
-        image += HEIGHT;
-
-        for (int j = 0; j < THICKNESS; j++) {
-            *(image++) = FRAME_COLOR;  // color
-        }
-
-        image += ((IMAGE_W - (HEIGHT + 2 * THICKNESS)) / 2);
-    }
-
-    PR_INFO("Frame drawing time : %d", utils_get_time_ms() - pass_time);
-
-    pass_time = utils_get_time_ms();
-
-    // Post image info to RISC-V mailbox
-    riscv_mail_box[1] = (uint32_t)raw;
-    // PR_DEBUG("Image ptr: %x",riscv_mail_box[1]);
-    riscv_mail_box[2] = h;
-    // PR_DEBUG("Image heigth: %x",riscv_mail_box[2]);
-    riscv_mail_box[3] = w;
-    // PR_DEBUG("Image width: %x\n",riscv_mail_box[3]);
-    riscv_mail_box[0] = IMAGE_READY;
-    // Signal the Cortex-M4 to wake up
-    MXC_SEMA->irq0 = MXC_F_SEMA_IRQ0_EN | MXC_F_SEMA_IRQ0_CM4_IRQ;
-
-    // Read luminance level from camera
-    ret = camera_get_luminance_level(&lum);
-
-    if (ret != STATUS_OK) {
-        PR_ERR("Camera Error %d", ret);
-    } else {
-        PR_DEBUG("Lum = %d", lum);
-
-        // Warn if luminance level is low
-        if (lum < LOW_LIGHT_THRESHOLD) {
-            PR_WARN("Low Light!");
+static uint8_t img_compare(void){
+    uint64_t sad=0;
+    for(uint32_t i=0; i<base_img.h; i++){
+        for(uint32_t j=0; j<base_img.w; j++){
+            sad += abs(base_img.img[i][j] - compare_img.img[i][j]);
         }
     }
 
-    PR_INFO("Screen print time : %d", utils_get_time_ms() - pass_time);
+    return sad>SAD_THRESHOLD;
 }

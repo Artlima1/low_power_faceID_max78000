@@ -75,4 +75,16 @@
 // Data input: HWC (little data): 160x120x3
 #define DATA_SIZE_IN (160 * 120 * 3)
 
+enum {
+    IMAGE_CAPTURE_BASE,
+    IMAGE_CAPTURE_COMPARE
+};
+
+enum {
+    IMG_CAP_RET_ERROR,
+    IMG_CAP_RET_SUCCESS,
+    IMG_CAP_RET_NO_CHANGE,
+    IMG_CAP_RET_CHANGE,
+};
+
 #endif // _IMG_CAPTURE_H_
