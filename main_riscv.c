@@ -31,7 +31,7 @@
  *
  ******************************************************************************/
 
-/**
+/*
  * @file    main_riscv.c
  * @brief   FaceID EvKit Demo
  *
@@ -61,29 +61,44 @@
 
 
 /***** Definitions *****/
-#define SLEEP_MODE           // Select between SLEEP_MODE and LPM_MODE
-#define OST_CLOCK_SOURCE MXC_TMR_8K_CLK // \ref mxc_tmr_clock_t
-#define MILLISECONDS_WUT 5000
+#define OST_CLOCK_SOURCE MXC_TMR_8M_CLK // \ref mxc_tmr_clock_t
 // Parameters for Continuous timer
-#define OST_FREQ 0.2 // (Hz)
-#define OST_TIMER MXC_TMR5 // Can be MXC_TMR0 through MXC_TMR5
+#define OST_FREQ 1 // (Hz)
+#define OST_TIMER MXC_TMR1 // Can be MXC_TMR0 through MXC_TMR5
 
 /***** Globals *****/
-int timerNumber = 1;
+int timer_count = 0;
 
 __attribute__((section(
     ".shared__at__mailbox"))) volatile uint32_t mail_box[ARM_MAILBOX_SIZE + RISCV_MAILBOX_SIZE];
 volatile uint32_t *arm_mail_box = &mail_box[0];
 volatile uint32_t *riscv_mail_box = &mail_box[ARM_MAILBOX_SIZE];
 
+void __attribute__((interrupt("machine")))TMR1_IRQHandler(void) {
+    // Clear interrupt
+    MXC_TMR_ClearFlags(OST_TIMER);
+
+	printf("Timer interrupt generated");
+
+    timer_count+=1;
+}
+
+void __attribute__((interrupt("machine"))) WUT_IRQHandler(void)
+{
+	printf("RISC-V: Wakeup timer");
+    MXC_WUT_IntClear();
+    NVIC_ClearPendingIRQ(WUT_IRQn);
+    NVIC_ClearPendingEVENT(WUT_IRQn);
+}
+
 //extern int start_img_capture(void);
 
 // *****************************************************************************
 typedef enum {
     STATE_INIT,
-    STATE_CAPTURING,
-    STATE_ANALYSING,
-    STATE_FINISH,
+    STATE_PIC1,
+    STATE_COMPARE,
+	STATE_CHANGE,
     NUM_STATES
 }State_t;
 
@@ -93,139 +108,100 @@ typedef struct{
 } StateMachine_t;
 
 void fn_INIT(void);
-void fn_CAPTURING(void);
-void fn_ANALYSING(void);
-void fn_FINISH(void);
+void fn_Pic1(void);
+void fn_Compare(void);
+void fn_Change(void);
 
 State_t current_state = STATE_INIT;
 
 StateMachine_t fsm[] = {
                       {STATE_INIT, fn_INIT},
-                      {STATE_CAPTURING, fn_CAPTURING},
-                      {STATE_ANALYSING, fn_ANALYSING},
-                      {STATE_FINISH, fn_FINISH}
+                      {STATE_PIC1, fn_Pic1},
+                      {STATE_COMPARE, fn_Compare},
+                      {STATE_CHANGE, fn_Change}
 };
 
-void Timer_Calculation(){
-
-    if(timerNumber < 5){
-    	timerNumber+=1;
-    }else{
-    	timerNumber=1;
-    }
-
-}
-void __attribute__((interrupt("machine")))TMR5_IRQHandler(void) {
-    // Clear interrupt
-    MXC_TMR_ClearFlags(OST_TIMER);
-
-    // Clear interrupt
-    if (MXC_TMR5->wkfl & MXC_F_TMR_WKFL_A) {
-        MXC_TMR5->wkfl = MXC_F_TMR_WKFL_A;
-        printf("Oneshot timer expired!\n");
-    }
-    Timer_Calculation();
-    current_state = STATE_INIT;
-
-}
-
-void OneshotTimer(){
-	for (int i = 0; i < 5000; i++) {}
-	    //Button debounce
-
-	    // Declare variables
-	    mxc_tmr_cfg_t tmr;
-	    uint32_t periodTicks = MXC_TMR_GetPeriod(OST_TIMER, OST_CLOCK_SOURCE, 1, OST_FREQ);
-
-	    MXC_TMR_Shutdown(OST_TIMER);
-
-	    tmr.pres = TMR_PRES_1;
-	    tmr.mode = TMR_MODE_ONESHOT;
-	    tmr.bitMode = TMR_BIT_MODE_32;
-	    tmr.clock = OST_CLOCK_SOURCE;
-	    //tmr.clock = MXC_SYS_PERIPH_CLOCK_CPU1;
-	    tmr.cmp_cnt = periodTicks; //SystemCoreClock*(1/interval_time);
-	    tmr.pol = 0;
-
-	    if (MXC_TMR_Init(OST_TIMER, &tmr, true) != E_NO_ERROR) {
-	        printf("Failed one-shot timer Initialization.\n");
-	        return;
-	    }
-
-	    MXC_TMR_EnableInt(OST_TIMER);
-
-	    // Enable wkup source in Poower seq register
-	    //MXC_LP_EnableTimerWakeup(OST_TIMER);
-	    // Enable Timer wake-up source
-	    MXC_TMR_EnableWakeup(OST_TIMER, &tmr);
-
-	    printf("Oneshot timer started.\n\n");
-
-	    MXC_TMR_Start(OST_TIMER);
-}
-
-
-void Transmission_Complete(int waitForTrigger)
-{
-    // Wait for serial transactions to complete.
-    while (MXC_UART_ReadyForSleep(MXC_UART_GET_UART(CONSOLE_UART)) != E_NO_ERROR) {}
-}
-
-
-
-void Select_Pic(int timerNumber){
-	if (timerNumber==1){
-	    	LED_On(LED1);
-	    	MXC_Delay(500000);
-	    	LED_Off(LED1);
-	    	MXC_Delay(500000);
-	    	printf("\nCapturing Pic1\n");
-	    }else{
-	    	LED_On(LED2);
-	    	MXC_Delay(500000);
-	    	LED_Off(LED2);
-	    	MXC_Delay(500000);
-	    	printf("\nCapturing Pic2\n");
-	    }
-}
-
 void fn_INIT(){
-	__WFI();
-	current_state = STATE_CAPTURING;
+	current_state = STATE_PIC1;
 }
 
-void fn_CAPTURING(){
-	Select_Pic(timerNumber);
-	current_state = STATE_ANALYSING;
+void fn_Pic1(){
+	printf("RiscV: capturing Pic1\n");
+
+	timer_count=0;
+
+	current_state = STATE_COMPARE;
 }
 
-void fn_ANALYSING(){
-	printf("I'm Analyzing");
-	current_state = STATE_FINISH;
+void fn_Compare(){
+	printf("RiscV: Capturing Pic2 and comparing\n");
+	
+	uint8_t decision = 0; // get_compare_result();
+
+	if(decision==0 && timer_count==5){
+		current_state = STATE_PIC1;
+	}
+	else if(decision==1){
+		current_state = STATE_CHANGE;
+	}
 }
 
-void fn_FINISH(){
-	Transmission_Complete(1);
-	asm volatile("wfi");  // RISC-V sleeps and waits for command from ARM
-	OneshotTimer();
-}
+void fn_Change(){
+	printf("RiscV: Image changed!");
 
+	/* send_uart */
+	/* while (MXC_UART_ReadyForSleep(MXC_UART_GET_UART(CONSOLE_UART)) != E_NO_ERROR) {} */
+	current_state = STATE_PIC1;
+}
 
 int main(void) {
 
+	printf("RiscV: Starting Setup...\n");
     /* Enable cache */
     MXC_ICC_Enable(MXC_ICC1);
-    __enable_irq();
-	NVIC_EnableIRQ(TMR5_IRQn);
-	NVIC_EnableEVENT(TMR5_IRQn);
+	
+	// Config Timer
+	mxc_tmr_cfg_t tmr;
+	uint32_t periodTicks = MXC_TMR_GetPeriod(OST_TIMER, OST_CLOCK_SOURCE, 128, OST_FREQ);
+	MXC_TMR_Shutdown(OST_TIMER);
+	tmr.pres = TMR_PRES_1;
+	tmr.mode = TMR_MODE_COMPARE;
+	tmr.bitMode = TMR_BIT_MODE_32;
+	tmr.clock = OST_CLOCK_SOURCE;
+	tmr.cmp_cnt = periodTicks;
+	tmr.pol = 0;
+	if (MXC_TMR_Init(OST_TIMER, &tmr, true) != E_NO_ERROR) {
+		printf("Failed one-shot timer Initialization.\n");
+	}
+	MXC_TMR_EnableInt(OST_TIMER);
+	MXC_TMR_EnableWakeup(OST_TIMER, &tmr);
+	NVIC_EnableIRQ(TMR1_IRQn);
+	NVIC_EnableEVENT(TMR1_IRQn);
+	printf("Set timer ticks to %d", periodTicks);
 
+	/* Enable PCIF wakeup event */
+    NVIC_EnableEVENT(PCIF_IRQn);
+    /* Enable wakeup timer interrupt */
+    NVIC_EnableIRQ(WUT_IRQn);
+    /* Enable wakeup timer event */
+    NVIC_EnableEVENT(WUT_IRQn);
+
+	printf("RiscV: Setup completed!\n");
+
+	MXC_TMR_Start(OST_TIMER);
+	
+	int prev_timer_count = 0;
 	while(1){
-	    if(current_state < NUM_STATES){
-	        (*fsm[current_state].state_function)();
-	    }
-	    else{
-	        /* serious error */
-	    }
+		asm volatile("wfi");
+		if(prev_timer_count != timer_count){
+			if(current_state < NUM_STATES){
+				prev_timer_count = timer_count;
+				(*fsm[current_state].state_function)();
+			}
+			else{
+				/* serious error */
+			}
+		}
 
 	}
 

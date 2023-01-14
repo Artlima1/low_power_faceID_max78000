@@ -66,7 +66,13 @@
 extern volatile void const *__FlashStart_;  // Defined in linker file
 
 void WakeISR(void) {
+    printf("ARM: WakeISR");
     MXC_SEMA->irq0 = MXC_F_SEMA_IRQ0_EN & ~MXC_F_SEMA_IRQ0_CM4_IRQ; //wake only RISC_V
+}
+
+void WUT_IRQHandler() {
+    printf("ARM: WUT_IRQHandler");
+    MXC_WUT_IntClear();
 }
 
 /********************************** Type Defines  *****************************/
@@ -78,6 +84,10 @@ void WakeISR(void) {
 /********************************* Public Functions **************************/
 
 int main(void) {
+    mxc_wut_cfg_t cfg;
+    uint32_t ticks;
+
+    printf("ARM: Starting setup...\n");
     MXC_ICC_Enable(MXC_ICC0); // Enable cache
 
     // Switch to 100 MHz clock
@@ -87,13 +97,33 @@ int main(void) {
     MXC_FCR->urvbootaddr = (uint32_t)&__FlashStart_; // Set RISC-V boot address
     MXC_SYS_ClockEnable(MXC_SYS_PERIPH_CLOCK_SMPHR); // Enable Sempahore clock
     MXC_NVIC_SetVector(RISCV_IRQn, WakeISR); // Set wakeup ISR
-
-    // DO NOT DELETE THIS LINE:
-    MXC_Delay(SEC(2)); // Let debugger interrupt if needed
-
+    NVIC_EnableIRQ(RISCV_IRQn);
     MXC_SYS_ClockEnable(MXC_SYS_PERIPH_CLOCK_CPU1); // Enable RISC-V clock
 
-    __WFI(); // Let RISC-V run
+
+    // Get ticks based off of milliseconds
+    MXC_WUT_GetTicks(5000, MXC_WUT_UNIT_MILLISEC, &ticks);
+    // config structure for one shot timer to trigger in a number of ticks
+    cfg.mode    = MXC_WUT_MODE_ONESHOT;
+    cfg.cmp_cnt = ticks;
+    // Init WUT
+    MXC_WUT_Init(MXC_WUT_PRES_1);
+    //Config WUT
+    MXC_WUT_Config(&cfg);
+    MXC_LP_EnableWUTAlarmWakeup();
+    NVIC_EnableIRQ(WUT_IRQn);
+
+    printf("ARM: Setup Completed!\n");
+
+    int i;
+    for (i = 0; i < (1 << 27); i++); // Let debugger interrupt if needed
+
+    MXC_WUT_Enable();
+    printf("ARM: Reaching Loop");
+    while(1){
+        MXC_LP_EnterSleepMode();
+        MXC_WUT_Enable();
+    }
 
     return 0;
 
