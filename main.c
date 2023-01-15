@@ -66,12 +66,10 @@
 extern volatile void const *__FlashStart_;  // Defined in linker file
 
 void WakeISR(void) {
-    printf("ARM: WakeISR");
     MXC_SEMA->irq0 = MXC_F_SEMA_IRQ0_EN & ~MXC_F_SEMA_IRQ0_CM4_IRQ; //wake only RISC_V
 }
 
 void WUT_IRQHandler() {
-    printf("ARM: WUT_IRQHandler");
     MXC_WUT_IntClear();
 }
 
@@ -87,7 +85,6 @@ int main(void) {
     mxc_wut_cfg_t cfg;
     uint32_t ticks;
 
-    printf("ARM: Starting setup...\n");
     MXC_ICC_Enable(MXC_ICC0); // Enable cache
 
     // Switch to 100 MHz clock
@@ -113,14 +110,11 @@ int main(void) {
     MXC_LP_EnableWUTAlarmWakeup();
     NVIC_EnableIRQ(WUT_IRQn);
 
-    printf("ARM: Setup Completed!\n");
-
     int i;
     for (i = 0; i < (1 << 27); i++); // Let debugger interrupt if needed
 
     // MXC_WUT_Enable();
     int count;
-    printf("ARM: Reaching Loop");
     while(1){
         count++;
         // MXC_LP_EnterSleepMode();

@@ -78,13 +78,15 @@ void __attribute__((interrupt("machine")))TMR1_IRQHandler(void) {
     MXC_TMR_ClearFlags(OST_TIMER);
 	NVIC_ClearPendingIRQ(TMR1_IRQn);
 
-	uint32_t remaining_ticks = MXC_TMR_GetCompare(OST_TIMER) - MXC_TMR_GetCount(OST_TIMER);
-
-	printf("TMR1_IRQHandler %d\n", (int) remaining_ticks);
+	int i;
+	for(i=0; i<0xFFFF; i++){
+		__NOP();
+	}
 
     timer_count+=1;
 
 	MXC_TMR_Start(OST_TIMER);
+
 }
 
 void __attribute__((interrupt("machine"))) WUT_IRQHandler(void)
@@ -126,11 +128,12 @@ StateMachine_t fsm[] = {
 };
 
 void fn_INIT(){
+	printf("RiscV: State INIT\n");
 	current_state = STATE_PIC1;
 }
 
 void fn_Pic1(){
-	printf("RiscV: capturing Pic1\n");
+	printf("RiscV: State PIC1\n");
 
 	timer_count=0;
 
@@ -138,7 +141,7 @@ void fn_Pic1(){
 }
 
 void fn_Compare(){
-	printf("RiscV: Capturing Pic2 and comparing\n");
+	printf("RiscV: State COMPARE\n");
 	
 	uint8_t decision = 0; // get_compare_result();
 
@@ -151,7 +154,7 @@ void fn_Compare(){
 }
 
 void fn_Change(){
-	printf("RiscV: Image changed!");
+	printf("RiscV: State CHANGE\n");
 
 	/* send_uart */
 	/* while (MXC_UART_ReadyForSleep(MXC_UART_GET_UART(CONSOLE_UART)) != E_NO_ERROR) {} */
@@ -180,7 +183,6 @@ int main(void) {
 	MXC_TMR_EnableInt(OST_TIMER);
 	MXC_TMR_EnableWakeup(OST_TIMER, &tmr);
 	NVIC_EnableIRQ(TMR1_IRQn);
-	printf("Set timer ticks to %d", periodTicks);
 
 	/* Enable PCIF wakeup event */
     NVIC_EnableEVENT(PCIF_IRQn);
@@ -193,22 +195,16 @@ int main(void) {
 
 	printf("RiscV: Setup completed!\n");
 
-
 	MXC_TMR_Start(OST_TIMER);
 	
-	int prev_timer_count = 0;
 	while(1){
-		// asm volatile("wfi");
-		if(prev_timer_count != timer_count){
-			if(current_state < NUM_STATES){
-				prev_timer_count = timer_count;
-				(*fsm[current_state].state_function)();
-			}
-			else{
-				/* serious error */
-			}
+		asm volatile("wfi");
+		if(current_state < NUM_STATES){
+			(*fsm[current_state].state_function)();
 		}
-
+		else{
+			/* serious error */
+		}
 	}
 
     return 0;
