@@ -118,11 +118,13 @@ int main(void) {
     int i;
     for (i = 0; i < (1 << 27); i++); // Let debugger interrupt if needed
 
-    MXC_WUT_Enable();
+    // MXC_WUT_Enable();
+    int count;
     printf("ARM: Reaching Loop");
     while(1){
-        MXC_LP_EnterSleepMode();
-        MXC_WUT_Enable();
+        count++;
+        // MXC_LP_EnterSleepMode();
+        // MXC_WUT_Enable();
     }
 
     return 0;

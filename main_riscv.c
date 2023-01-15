@@ -30,7 +30,6 @@
  * ownership rights.
  *
  ******************************************************************************/
-
 /*
  * @file    main_riscv.c
  * @brief   FaceID EvKit Demo
@@ -61,7 +60,7 @@
 
 
 /***** Definitions *****/
-#define OST_CLOCK_SOURCE MXC_TMR_8M_CLK // \ref mxc_tmr_clock_t
+#define OST_CLOCK_SOURCE MXC_TMR_32K_CLK // \ref mxc_tmr_clock_t
 // Parameters for Continuous timer
 #define OST_FREQ 1 // (Hz)
 #define OST_TIMER MXC_TMR1 // Can be MXC_TMR0 through MXC_TMR5
@@ -77,15 +76,20 @@ volatile uint32_t *riscv_mail_box = &mail_box[ARM_MAILBOX_SIZE];
 void __attribute__((interrupt("machine")))TMR1_IRQHandler(void) {
     // Clear interrupt
     MXC_TMR_ClearFlags(OST_TIMER);
+	NVIC_ClearPendingIRQ(TMR1_IRQn);
 
-	printf("Timer interrupt generated");
+	uint32_t remaining_ticks = MXC_TMR_GetCompare(OST_TIMER) - MXC_TMR_GetCount(OST_TIMER);
+
+	printf("TMR1_IRQHandler %d\n", (int) remaining_ticks);
 
     timer_count+=1;
+
+	MXC_TMR_Start(OST_TIMER);
 }
 
 void __attribute__((interrupt("machine"))) WUT_IRQHandler(void)
 {
-	printf("RISC-V: Wakeup timer");
+	printf("RISC-V: Wakeup timer\n");
     MXC_WUT_IntClear();
     NVIC_ClearPendingIRQ(WUT_IRQn);
     NVIC_ClearPendingEVENT(WUT_IRQn);
@@ -93,7 +97,7 @@ void __attribute__((interrupt("machine"))) WUT_IRQHandler(void)
 
 //extern int start_img_capture(void);
 
-// *****************************************************************************
+// ******************************************************************************
 typedef enum {
     STATE_INIT,
     STATE_PIC1,
@@ -162,21 +166,20 @@ int main(void) {
 	
 	// Config Timer
 	mxc_tmr_cfg_t tmr;
-	uint32_t periodTicks = MXC_TMR_GetPeriod(OST_TIMER, OST_CLOCK_SOURCE, 128, OST_FREQ);
+	uint32_t periodTicks = MXC_TMR_GetPeriod(OST_TIMER, OST_CLOCK_SOURCE, 32, OST_FREQ);
 	MXC_TMR_Shutdown(OST_TIMER);
-	tmr.pres = TMR_PRES_1;
-	tmr.mode = TMR_MODE_COMPARE;
+	tmr.pres = TMR_PRES_32;
+	tmr.mode = TMR_MODE_ONESHOT;
 	tmr.bitMode = TMR_BIT_MODE_32;
 	tmr.clock = OST_CLOCK_SOURCE;
 	tmr.cmp_cnt = periodTicks;
 	tmr.pol = 0;
-	if (MXC_TMR_Init(OST_TIMER, &tmr, true) != E_NO_ERROR) {
+	if (MXC_TMR_Init(OST_TIMER, &tmr, false) != E_NO_ERROR) {
 		printf("Failed one-shot timer Initialization.\n");
 	}
 	MXC_TMR_EnableInt(OST_TIMER);
 	MXC_TMR_EnableWakeup(OST_TIMER, &tmr);
 	NVIC_EnableIRQ(TMR1_IRQn);
-	NVIC_EnableEVENT(TMR1_IRQn);
 	printf("Set timer ticks to %d", periodTicks);
 
 	/* Enable PCIF wakeup event */
@@ -186,13 +189,16 @@ int main(void) {
     /* Enable wakeup timer event */
     NVIC_EnableEVENT(WUT_IRQn);
 
+	__enable_irq();
+
 	printf("RiscV: Setup completed!\n");
+
 
 	MXC_TMR_Start(OST_TIMER);
 	
 	int prev_timer_count = 0;
 	while(1){
-		asm volatile("wfi");
+		// asm volatile("wfi");
 		if(prev_timer_count != timer_count){
 			if(current_state < NUM_STATES){
 				prev_timer_count = timer_count;
