@@ -65,13 +65,8 @@
 
 extern volatile void const *__FlashStart_;  // Defined in linker file
 
-__attribute__((section(
-    ".shared__at__mailbox"))) volatile uint32_t mail_box[ARM_MAILBOX_SIZE + RISCV_MAILBOX_SIZE];
-volatile uint32_t *arm_mail_box = &mail_box[0];
-volatile uint32_t *riscv_mail_box = &mail_box[ARM_MAILBOX_SIZE];
-
 void WakeISR(void) {
-    MXC_SEMA->irq0 = MXC_F_SEMA_IRQ0_EN & ~MXC_F_SEMA_IRQ0_CM4_IRQ;
+    MXC_SEMA->irq0 = MXC_F_SEMA_IRQ0_EN & ~MXC_F_SEMA_IRQ0_CM4_IRQ; //wake only RISC_V
 }
 
 void WUT_IRQHandler() {
@@ -80,164 +75,52 @@ void WUT_IRQHandler() {
 
 /********************************** Type Defines  *****************************/
 
-
 /************************************ VARIABLES ******************************/
-static int init(void);
 
 /********************************* Static Functions **************************/
-
-static int init(void) {
-    uint8_t *raw;
-    uint32_t w, h;
-
-    while (1) {
-        MXC_LP_EnterSleepMode();  // ARM sleeps and waits for semaphore from RISC
-
-        // Get and display image
-        // TODO - Save and Send Image
-        if (riscv_mail_box[0] == IMAGE_READY) {
-            raw = (uint8_t *)riscv_mail_box[1];
-            h = riscv_mail_box[2];
-            w = riscv_mail_box[3];
-            // Clear mailbox
-            riscv_mail_box[0] = 0;
-
-            // TODO - We already have the image, now what?
-        }
-    }
-
-    return 0;
-}
-
-static void button_press(void * pb) {
-    PB_IntClear(0);
-    arm_mail_box[0] = CAPTURE_IMG;
-}
 
 /********************************* Public Functions **************************/
 
 int main(void) {
-    uint32_t ticks;
     mxc_wut_cfg_t cfg;
+    uint32_t ticks;
 
-    printf("\n\nStart ARM\n");
-    MXC_ICC_Enable(MXC_ICC0);  // Enable cache
+    MXC_ICC_Enable(MXC_ICC0); // Enable cache
 
-    printf("SYS Clock Div= %d \n", SYS_DIV);
-
-    switch (SYS_DIV) {
-        case 1:
-            MXC_GCR->clkctrl |= MXC_S_GCR_CLKCTRL_SYSCLK_DIV_DIV1;
-            break;
-
-        case 2:
-            MXC_GCR->clkctrl |= MXC_S_GCR_CLKCTRL_SYSCLK_DIV_DIV2;
-            break;
-
-        case 4:
-            MXC_GCR->clkctrl |= MXC_S_GCR_CLKCTRL_SYSCLK_DIV_DIV4;
-            break;
-
-        case 8:
-            MXC_GCR->clkctrl |= MXC_S_GCR_CLKCTRL_SYSCLK_DIV_DIV8;
-            break;
-
-        case 16:
-            MXC_GCR->clkctrl |= MXC_S_GCR_CLKCTRL_SYSCLK_DIV_DIV16;
-            break;
-
-        default:
-            printf("UNKNOWN DIV \n");
-
-            while (1) {
-            }
-    }
-
-    printf("MXC_GCR->clkctrl: SYSCLK_SEL %x \n",
-           (MXC_GCR->clkctrl & MXC_F_GCR_CLKCTRL_SYSCLK_SEL) >> MXC_F_GCR_CLKCTRL_SYSCLK_SEL_POS);
-    printf("MXC_GCR->clkctrl: SYSCLK_DIV %x \n",
-           (MXC_GCR->clkctrl & MXC_F_GCR_CLKCTRL_SYSCLK_DIV) >> MXC_F_GCR_CLKCTRL_SYSCLK_DIV_POS);
-
-    switch (CLOCK_SOURCE) {
-        case 0:
-            MXC_SYS_ClockSourceEnable(MXC_SYS_CLOCK_IPO);
-            MXC_SYS_Clock_Select(MXC_SYS_CLOCK_IPO);
-            MXC_GCR->pm &= ~MXC_F_GCR_PM_IPO_PD;  // enable IPO=100MHz during sleep
-            break;
-
-        case 1:
-            MXC_SYS_ClockSourceEnable(MXC_SYS_CLOCK_ISO);
-            MXC_SYS_Clock_Select(MXC_SYS_CLOCK_ISO);
-            MXC_GCR->pm &= ~MXC_F_GCR_PM_ISO_PD;  // enable ISO=60MHz during sleep
-            break;
-
-        case 2:
-            MXC_SYS_ClockSourceEnable(MXC_SYS_CLOCK_IBRO);
-            MXC_SYS_Clock_Select(MXC_SYS_CLOCK_IBRO);
-            MXC_GCR->pm &= ~MXC_F_GCR_PM_IBRO_PD;  // enable IBRO=7.3728MHz during sleep
-            break;
-
-        default:
-            printf("UNKNOWN CLOCK SOURCE \n");
-
-            while (1) {
-            }
-    }
-
+    // Switch to 100 MHz clock
+    MXC_SYS_Clock_Select(MXC_SYS_CLOCK_IPO);
     SystemCoreClockUpdate();
 
-    /* Initialize RTC */
-    MXC_RTC_Init(0, 0);
-    MXC_RTC_Start();
-
-    // Init ARM mailbox
-    memset((void *)arm_mail_box, 0, sizeof(arm_mail_box));
-    // Init RISCV mailbox
-    memset((void *)riscv_mail_box, 0, sizeof(riscv_mail_box));
-
-    printf("ARM mailbox: %x\n", &arm_mail_box[0]);
-    printf("RISC-V mailbox: %x\n", &riscv_mail_box[0]);
-
-    // Let RISC-V run
-    MXC_FCR->urvbootaddr = (uint32_t)&__FlashStart_;  // Set RISC-V boot address
-    MXC_SYS_ClockEnable(MXC_SYS_PERIPH_CLOCK_SMPHR);  // Enable Semaphore clock
-    MXC_NVIC_SetVector(RISCV_IRQn, WakeISR);          // Set wakeup ISR
-    /* set wakeup by risc-v */
+    MXC_FCR->urvbootaddr = (uint32_t)&__FlashStart_; // Set RISC-V boot address
+    MXC_SYS_ClockEnable(MXC_SYS_PERIPH_CLOCK_SMPHR); // Enable Sempahore clock
+    MXC_NVIC_SetVector(RISCV_IRQn, WakeISR); // Set wakeup ISR
     NVIC_EnableIRQ(RISCV_IRQn);
-    MXC_SYS_ClockEnable(MXC_SYS_PERIPH_CLOCK_CPU1);  // Enable RISC-V clock
+    MXC_SYS_ClockEnable(MXC_SYS_PERIPH_CLOCK_CPU1); // Enable RISC-V clock
+
 
     // Get ticks based off of milliseconds
-    MXC_WUT_GetTicks(500, MXC_WUT_UNIT_MILLISEC, &ticks);
-
+    MXC_WUT_GetTicks(5000, MXC_WUT_UNIT_MILLISEC, &ticks);
     // config structure for one shot timer to trigger in a number of ticks
-    cfg.mode = MXC_WUT_MODE_ONESHOT;
+    cfg.mode    = MXC_WUT_MODE_ONESHOT;
     cfg.cmp_cnt = ticks;
-
     // Init WUT
     MXC_WUT_Init(MXC_WUT_PRES_1);
-
-    // Config WUT
+    //Config WUT
     MXC_WUT_Config(&cfg);
-
     MXC_LP_EnableWUTAlarmWakeup();
-
     NVIC_EnableIRQ(WUT_IRQn);
 
-    PB_Init();
-    PB_RegisterCallback(0, &button_press);
-    PB_IntEnable(0);
+    int i;
+    for (i = 0; i < (1 << 27); i++); // Let debugger interrupt if needed
 
-    int start = 1;
-    /* Wait untill start trigger */
-    while (1) {
-        /* TODO - Codition to start the process */
-        if(start) {
-            // Start Wakeup Timer in case RISC-V sleeps
-            MXC_WUT_Enable();
-            init();
-            start = 0;
-        }
+    // MXC_WUT_Enable();
+    int count;
+    while(1){
+        count++;
+        // MXC_LP_EnterSleepMode();
+        // MXC_WUT_Enable();
     }
 
     return 0;
+
 }

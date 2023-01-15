@@ -30,8 +30,7 @@
  * ownership rights.
  *
  ******************************************************************************/
-
-/**
+/*
  * @file    main_riscv.c
  * @brief   FaceID EvKit Demo
  *
@@ -56,94 +55,157 @@
 #include "mxc_delay.h"
 #include "mxc_sys.h"
 #include "sema_regs.h"
+#include "lp.h"
+#include "gcfr_regs.h"
+
+
+/***** Definitions *****/
+#define OST_CLOCK_SOURCE MXC_TMR_32K_CLK // \ref mxc_tmr_clock_t
+// Parameters for Continuous timer
+#define OST_FREQ 1 // (Hz)
+#define OST_TIMER MXC_TMR1 // Can be MXC_TMR0 through MXC_TMR5
+
+/***** Globals *****/
+int timer_count = 0;
 
 __attribute__((section(
     ".shared__at__mailbox"))) volatile uint32_t mail_box[ARM_MAILBOX_SIZE + RISCV_MAILBOX_SIZE];
 volatile uint32_t *arm_mail_box = &mail_box[0];
 volatile uint32_t *riscv_mail_box = &mail_box[ARM_MAILBOX_SIZE];
 
-extern int start_img_capture(void);
+void __attribute__((interrupt("machine")))TMR1_IRQHandler(void) {
+    // Clear interrupt
+    MXC_TMR_ClearFlags(OST_TIMER);
+	NVIC_ClearPendingIRQ(TMR1_IRQn);
 
-// *****************************************************************************
-void __attribute__((interrupt("machine"))) WUT_IRQHandler(void) {
+	int i;
+	for(i=0; i<0xFFFF; i++){
+		__NOP();
+	}
+
+    timer_count+=1;
+
+	MXC_TMR_Start(OST_TIMER);
+
+}
+
+void __attribute__((interrupt("machine"))) WUT_IRQHandler(void)
+{
+	printf("RISC-V: Wakeup timer\n");
     MXC_WUT_IntClear();
     NVIC_ClearPendingIRQ(WUT_IRQn);
     NVIC_ClearPendingEVENT(WUT_IRQn);
 }
 
-int main(void) {
-    int ret = 0;
-    int slaveAddress;
-    int id;
-    int dma_channel;
+//extern int start_img_capture(void);
 
-    Debug_Init();  // Set up RISCV JTAG
+// ******************************************************************************
+typedef enum {
+    STATE_INIT,
+    STATE_PIC1,
+    STATE_COMPARE,
+	STATE_CHANGE,
+    NUM_STATES
+}State_t;
+
+typedef struct{
+    State_t state;
+    void (*state_function)(void);
+} StateMachine_t;
+
+void fn_INIT(void);
+void fn_Pic1(void);
+void fn_Compare(void);
+void fn_Change(void);
+
+State_t current_state = STATE_INIT;
+
+StateMachine_t fsm[] = {
+                      {STATE_INIT, fn_INIT},
+                      {STATE_PIC1, fn_Pic1},
+                      {STATE_COMPARE, fn_Compare},
+                      {STATE_CHANGE, fn_Change}
+};
+
+void fn_INIT(){
+	printf("RiscV: State INIT\n");
+	current_state = STATE_PIC1;
+}
+
+void fn_Pic1(){
+	printf("RiscV: State PIC1\n");
+
+	timer_count=0;
+
+	current_state = STATE_COMPARE;
+}
+
+void fn_Compare(){
+	printf("RiscV: State COMPARE\n");
+	
+	uint8_t decision = 0; // get_compare_result();
+
+	if(decision==0 && timer_count==5){
+		current_state = STATE_PIC1;
+	}
+	else if(decision==1){
+		current_state = STATE_CHANGE;
+	}
+}
+
+void fn_Change(){
+	printf("RiscV: State CHANGE\n");
+
+	/* send_uart */
+	/* while (MXC_UART_ReadyForSleep(MXC_UART_GET_UART(CONSOLE_UART)) != E_NO_ERROR) {} */
+	current_state = STATE_PIC1;
+}
+
+int main(void) {
+
+	printf("RiscV: Starting Setup...\n");
     /* Enable cache */
     MXC_ICC_Enable(MXC_ICC1);
+	
+	// Config Timer
+	mxc_tmr_cfg_t tmr;
+	uint32_t periodTicks = MXC_TMR_GetPeriod(OST_TIMER, OST_CLOCK_SOURCE, 32, OST_FREQ);
+	MXC_TMR_Shutdown(OST_TIMER);
+	tmr.pres = TMR_PRES_32;
+	tmr.mode = TMR_MODE_ONESHOT;
+	tmr.bitMode = TMR_BIT_MODE_32;
+	tmr.clock = OST_CLOCK_SOURCE;
+	tmr.cmp_cnt = periodTicks;
+	tmr.pol = 0;
+	if (MXC_TMR_Init(OST_TIMER, &tmr, false) != E_NO_ERROR) {
+		printf("Failed one-shot timer Initialization.\n");
+	}
+	MXC_TMR_EnableInt(OST_TIMER);
+	MXC_TMR_EnableWakeup(OST_TIMER, &tmr);
+	NVIC_EnableIRQ(TMR1_IRQn);
 
-    PR_DEBUG("Start RISC-V\n");
+	/* Enable PCIF wakeup event */
+    NVIC_EnableEVENT(PCIF_IRQn);
+    /* Enable wakeup timer interrupt */
+    NVIC_EnableIRQ(WUT_IRQn);
+    /* Enable wakeup timer event */
+    NVIC_EnableEVENT(WUT_IRQn);
 
-    // Initialize DMA for camera interface
-    MXC_DMA_Init();
-    dma_channel = MXC_DMA_AcquireChannel();
+	__enable_irq();
 
-    /* Enable camera power */
-    Camera_Power(POWER_ON);
-    MXC_Delay(300000);
-    PR_DEBUG("\n\nFaceID Feather Demo\n");
+	printf("RiscV: Setup completed!\n");
 
-    // Initialize the camera driver.
-    camera_init(CAMERA_FREQ);
-
-    PR_DEBUG("Init Camera");
-
-    // Obtain the I2C slave address of the camera.
-    slaveAddress = camera_get_slave_address();
-    PR_DEBUG("Camera I2C slave address is %02x\n", slaveAddress);
-
-    // Obtain the product ID of the camera.
-    ret = camera_get_product_id(&id);
-
-    if (ret != STATUS_OK) {
-        PR_ERR("Error returned from reading camera id. Error %d\n", ret);
-        return -1;
-    }
-
-    PR_DEBUG("Camera Product ID is %04x\n", id);
-
-    // Obtain the manufacture ID of the camera.
-    ret = camera_get_manufacture_id(&id);
-
-    if (ret != STATUS_OK) {
-        PR_ERR("Error returned from reading camera id. Error %d\n", ret);
-        return -1;
-    }
-
-    PR_DEBUG("Camera Manufacture ID is %04x\n", id);
-
-    // Setup the camera image dimensions, pixel format and data acquiring details.
-    ret = camera_setup(IMAGE_XRES, IMAGE_YRES, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA,
-                       dma_channel);
-
-    if (ret != STATUS_OK) {
-        PR_ERR("Error returned from setting up camera. Error %d\n", ret);
-        return -1;
-    }
-
-    camera_write_reg(0x0c, 0x56);  // camera vertical flip=0 - Feather Board Design
-
-    PR_DEBUG("ARM mailbox: %x", &arm_mail_box[0]);
-    PR_DEBUG("RISC-V mailbox: %x\n", &riscv_mail_box[0]);
-
-    while (1) {
-        if (arm_mail_box[0]==CAPTURE_IMG) {
-            PR_DEBUG("Start FaceId");
-            /* clear ARM mailbox */
-            arm_mail_box[0] = 0;
-            start_img_capture();
-            asm volatile("wfi");  // RISC-V sleeps and waits for command from ARM
-        }
-    }
+	MXC_TMR_Start(OST_TIMER);
+	
+	while(1){
+		asm volatile("wfi");
+		if(current_state < NUM_STATES){
+			(*fsm[current_state].state_function)();
+		}
+		else{
+			/* serious error */
+		}
+	}
 
     return 0;
 }
