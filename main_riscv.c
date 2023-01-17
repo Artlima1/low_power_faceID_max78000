@@ -146,9 +146,10 @@ void fn_Pic1(){
 void fn_Compare(){
 	printf("RiscV: State COMPARE\n");
 	
-	uint8_t decision = img_capture(IMAGE_CAPTURE_COMPARE);
+	uint8_t decision = 0;
+	img_capture(IMAGE_CAPTURE_COMPARE);
 
-	if(decision==0 && timer_count==COMPS_PER_BASE_PIC){
+	if(decision==0 && timer_count>=COMPS_PER_BASE_PIC){
 		current_state = STATE_PIC1;
 	}
 	else if(decision==1){

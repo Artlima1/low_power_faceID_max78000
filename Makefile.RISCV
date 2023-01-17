@@ -73,6 +73,7 @@ export CMSIS_ROOT
 SRCS  = main_riscv.c
 SRCS += src/utils.c
 SRCS += src/img_capture.c
+SRCS += src/linked_list.c
 
 # Where to find source files for this test
 VPATH  = .

@@ -53,8 +53,8 @@
 #define BACK_X 0
 #define BACK_Y 280
 
-#define IMAGE_XRES 170 //200
-#define IMAGE_YRES 130 //150
+#define IMAGE_XRES 20 //200
+#define IMAGE_YRES 20 //150
 
 #define HEIGHT 160
 #define WIDTH 120

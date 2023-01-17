@@ -44,6 +44,7 @@
 #include "utils.h"
 #include "dma.h"
 #include "icc.h"
+#include "linked_list.h"
 
 #define S_MODULE_NAME "img_capture"
 
@@ -57,15 +58,9 @@
 #define GREEN_OFFSET    5  
 #define BLUE_MASK       0x1F    /* 0000 0000 0001 1111 */
 
+#define IMG_SIZE IMAGE_XRES*IMAGE_YRES*2
 
 /********************************** Type Defines  *****************************/
-
-typedef struct {
-    uint16_t * img;
-    uint32_t size;
-    uint32_t h;
-    uint32_t w;
-} img_info_t;
 
 typedef struct {
     uint16_t r;
@@ -82,12 +77,7 @@ enum {
 static uint8_t store_img(uint8_t img_type);
 static uint8_t img_compare(void);
 
-static img_info_t base_img = {
-    .img = NULL,
-    .h = 0,
-    .w = 0,
-    .size = 0,
-};
+void * base_img=NULL;
 
 uint8_t img_capture(uint8_t capture_mode) {
     uint8_t ret = IMG_CAP_RET_ERROR;
@@ -118,21 +108,22 @@ uint8_t img_capture(uint8_t capture_mode) {
 
 static uint8_t store_img(uint8_t img_type){
     uint8_t *raw;
-
-    if(base_img.size != 0){
-        free(base_img.img);
-    }
+    uint32_t size, w, h;
 
     // Get the details of the image from the camera driver.
-    camera_get_image(&raw, &base_img.size, &base_img.w, &base_img.h);
-    base_img.img = (uint16_t * ) malloc(base_img.size);
+    camera_get_image(&raw, &size, &w, &h);
+    uint16_t * img = (uint16_t *) raw;
 
-    if(base_img.img == NULL){
+    if(base_img!=NULL){
+        list_free(base_img);
+    }
+
+    if(list_insert_array(base_img, img, w*h)==0){
+        printf("Not enough memory!\n");
         return IMG_CAP_RET_ERROR;
     }
 
-    printf("Pic size: %d %d %d written to %p\n", base_img.size, base_img.w, base_img.h, base_img.img);
-    memcpy(base_img.img, raw, base_img.size);
+    printf("Pic size: %d stored\n", size);
 
     return IMG_CAP_RET_SUCCESS;
 
@@ -147,33 +138,33 @@ static uint8_t img_compare(void){
     uint16_t * comp_img = (uint16_t * ) raw;
 
 
-    uint64_t SAD=0, MSE=0, i, j;
-    uint16_t dif, *pixel_base, *pixel_comp;
+    uint64_t SAD=0, MSE=0, i;
+    uint16_t dif, pixel_base, pixel_comp;
     rgb_t rgb_base, rgb_comp, rgb_dif;
-    for(i=0; i<base_img.h; i++){
-        for(j=0; j<base_img.w; j++){
-            pixel_base = &base_img.img[i*base_img.w + j];
-            pixel_comp = &comp_img[i*base_img.w + j];
-
-            /* Get color values from pixel */
-            rgb_base.r = (*(pixel_base) & RED_MASK) >> RED_OFFSET;
-            rgb_base.g = (*(pixel_base) & GREEN_MASK) >> GREEN_OFFSET;
-            rgb_base.b = (*(pixel_base) & BLUE_MASK);
-
-            rgb_comp.r = (*(pixel_comp) & RED_MASK) >> RED_OFFSET;
-            rgb_comp.g = (*(pixel_comp) & GREEN_MASK) >> GREEN_OFFSET;
-            rgb_comp.b = (*(pixel_comp) & BLUE_MASK);
-
-            rgb_dif.r = (rgb_base.r > rgb_comp.r) ? (rgb_base.r - rgb_comp.r) : (rgb_comp.r - rgb_base.r);
-            rgb_dif.g = (rgb_base.g > rgb_comp.g) ? (rgb_base.g - rgb_comp.g) : (rgb_comp.g - rgb_base.g);
-            rgb_dif.b = (rgb_base.b > rgb_comp.b) ? (rgb_base.b - rgb_comp.b) : (rgb_comp.b - rgb_base.b);
-
-            dif = rgb_dif.r + rgb_dif.g + rgb_dif.b;
-
-            SAD = SAD +  (uint64_t) dif;
-
-            MSE = MSE + ((uint64_t) dif * (uint64_t) dif) / (uint64_t) (base_img.w * base_img.h);
+    for(i=0; i<(IMG_SIZE>>1); i++){
+        if(list_get(base_img, i, &pixel_base)==0){
+            return IMG_CAP_RET_ERROR;
         }
+        pixel_comp = comp_img[i];
+
+        /* Get color values from pixel */
+        rgb_base.r = (pixel_base & RED_MASK) >> RED_OFFSET;
+        rgb_base.g = (pixel_base & GREEN_MASK) >> GREEN_OFFSET;
+        rgb_base.b = (pixel_base & BLUE_MASK);
+
+        rgb_comp.r = (pixel_comp & RED_MASK) >> RED_OFFSET;
+        rgb_comp.g = (pixel_comp & GREEN_MASK) >> GREEN_OFFSET;
+        rgb_comp.b = (pixel_comp & BLUE_MASK);
+
+        rgb_dif.r = (rgb_base.r > rgb_comp.r) ? (rgb_base.r - rgb_comp.r) : (rgb_comp.r - rgb_base.r);
+        rgb_dif.g = (rgb_base.g > rgb_comp.g) ? (rgb_base.g - rgb_comp.g) : (rgb_comp.g - rgb_base.g);
+        rgb_dif.b = (rgb_base.b > rgb_comp.b) ? (rgb_base.b - rgb_comp.b) : (rgb_comp.b - rgb_base.b);
+
+        dif = rgb_dif.r + rgb_dif.g + rgb_dif.b;
+
+        SAD = SAD +  (uint64_t) dif;
+
+        MSE = MSE + ((uint64_t) dif * (uint64_t) dif) / (uint64_t) (IMG_SIZE>>1);
     }
 
     printf("SAD and MSE result: %u%u, %u%d\n", 
@@ -237,5 +228,8 @@ void img_capture_init(void) {
     }
 
     camera_write_reg(0x0c, 0x56); //camera vertical flip=0
+
+    base_img = list_create();
+    printf("Base img addr: %p", base_img);
 
 }
