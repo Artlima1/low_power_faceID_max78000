@@ -65,6 +65,8 @@
 #define OST_FREQ 1 // (Hz)
 #define OST_TIMER MXC_TMR1 // Can be MXC_TMR0 through MXC_TMR5
 
+#define COMPS_PER_BASE_PIC 10
+
 /***** Globals *****/
 int timer_count = 0;
 
@@ -97,8 +99,6 @@ void __attribute__((interrupt("machine"))) WUT_IRQHandler(void)
     NVIC_ClearPendingEVENT(WUT_IRQn);
 }
 
-//extern int start_img_capture(void);
-
 // ******************************************************************************
 typedef enum {
     STATE_INIT,
@@ -129,11 +129,14 @@ StateMachine_t fsm[] = {
 
 void fn_INIT(){
 	printf("RiscV: State INIT\n");
+	
 	current_state = STATE_PIC1;
 }
 
 void fn_Pic1(){
 	printf("RiscV: State PIC1\n");
+
+	img_capture(IMAGE_CAPTURE_BASE);
 
 	timer_count=0;
 
@@ -143,9 +146,9 @@ void fn_Pic1(){
 void fn_Compare(){
 	printf("RiscV: State COMPARE\n");
 	
-	uint8_t decision = 0; // get_compare_result();
+	uint8_t decision = img_capture(IMAGE_CAPTURE_COMPARE);
 
-	if(decision==0 && timer_count==5){
+	if(decision==0 && timer_count==COMPS_PER_BASE_PIC){
 		current_state = STATE_PIC1;
 	}
 	else if(decision==1){
@@ -192,6 +195,8 @@ int main(void) {
     NVIC_EnableEVENT(WUT_IRQn);
 
 	__enable_irq();
+
+	img_capture_init();
 
 	printf("RiscV: Setup completed!\n");
 

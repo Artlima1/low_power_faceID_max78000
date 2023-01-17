@@ -66,14 +66,7 @@
 #define X_START 45
 #define Y_START 30
 
-#define BYTE_PER_PIXEL 2
-
-#define X_IMAGE_START 45
-#define Y_IMAGE_START 30
-#define LOW_LIGHT_THRESHOLD 20
-#define FAST_FIFO // if defined, it uses fast fifo instead of fifo
-// Data input: HWC (little data): 160x120x3
-#define DATA_SIZE_IN (160 * 120 * 3)
+#define SAD_THRESHOLD 50000
 
 enum {
     IMAGE_CAPTURE_BASE,
@@ -86,5 +79,8 @@ enum {
     IMG_CAP_RET_NO_CHANGE,
     IMG_CAP_RET_CHANGE,
 };
+
+uint8_t img_capture(uint8_t capture_mode);
+void img_capture_init(void);
 
 #endif // _IMG_CAPTURE_H_
