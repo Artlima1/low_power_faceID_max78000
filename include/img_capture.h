@@ -53,8 +53,8 @@
 #define BACK_X 0
 #define BACK_Y 280
 
-#define IMAGE_XRES 20 //200
-#define IMAGE_YRES 20 //150
+#define IMAGE_XRES 40 //200
+#define IMAGE_YRES 40 //150
 
 #define HEIGHT 160
 #define WIDTH 120
@@ -66,7 +66,7 @@
 #define X_START 45
 #define Y_START 30
 
-#define SAD_THRESHOLD 50000
+#define SAD_THRESHOLD 55000
 
 enum {
     IMAGE_CAPTURE_BASE,

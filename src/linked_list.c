@@ -78,7 +78,7 @@ uint8_t list_insert_array(void * head, uint16_t * values, uint32_t size){
     return 1;
 }
 
-uint8_t list_get(void * head, uint32_t index, uint16_t * value){
+uint8_t list_get(void * head, uint32_t index, uint16_t ** value){
     node_t * h = (node_t *) head;
 
     int i;
@@ -89,7 +89,18 @@ uint8_t list_get(void * head, uint32_t index, uint16_t * value){
         }
         curr = curr->next;
     }
-    *value = curr->value;
+    *value = &curr->value;
 
     return 1;
 } 
+
+uint8_t list_get_next(uint16_t ** value_poiter){
+    node_t * node = (node_t *) *value_poiter;
+    if (node->next==NULL){
+        return 0;
+    }
+    else {
+        *value_poiter = &node->next->value;
+    }
+    return 1;
+}

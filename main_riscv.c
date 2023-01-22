@@ -62,10 +62,10 @@
 /***** Definitions *****/
 #define OST_CLOCK_SOURCE MXC_TMR_32K_CLK // \ref mxc_tmr_clock_t
 // Parameters for Continuous timer
-#define OST_FREQ 1 // (Hz)
+#define OST_FREQ 10 // (Hz)
 #define OST_TIMER MXC_TMR1 // Can be MXC_TMR0 through MXC_TMR5
 
-#define COMPS_PER_BASE_PIC 10
+#define COMPS_PER_BASE_PIC 100
 
 /***** Globals *****/
 int timer_count = 0;
@@ -86,8 +86,6 @@ void __attribute__((interrupt("machine")))TMR1_IRQHandler(void) {
 	}
 
     timer_count+=1;
-
-	MXC_TMR_Start(OST_TIMER);
 
 }
 
@@ -128,46 +126,49 @@ StateMachine_t fsm[] = {
 };
 
 void fn_INIT(){
-	printf("RiscV: State INIT\n");
+	// printf("RiscV: State INIT\n");
 	
 	current_state = STATE_PIC1;
 }
 
 void fn_Pic1(){
-	printf("RiscV: State PIC1\n");
+	// printf("RiscV: State PIC1\n");
 
 	img_capture(IMAGE_CAPTURE_BASE);
-
+	printf("0\n");
 	timer_count=0;
 
 	current_state = STATE_COMPARE;
 }
 
 void fn_Compare(){
-	printf("RiscV: State COMPARE\n");
+	// printf("RiscV: State COMPARE\n");
 	
-	uint8_t decision = 0;
-	img_capture(IMAGE_CAPTURE_COMPARE);
+	uint8_t decision = img_capture(IMAGE_CAPTURE_COMPARE);
 
-	if(decision==0 && timer_count>=COMPS_PER_BASE_PIC){
-		current_state = STATE_PIC1;
+	if(decision == IMG_CAP_RET_ERROR){
+		printf("Error in image comparison\n");
 	}
-	else if(decision==1){
+	else if(decision==IMG_CAP_RET_CHANGE){
 		current_state = STATE_CHANGE;
+	}
+	else if(timer_count>=COMPS_PER_BASE_PIC){
+		current_state = STATE_PIC1;
 	}
 }
 
 void fn_Change(){
-	printf("RiscV: State CHANGE\n");
+	// printf("RiscV: State CHANGE\n");
 
 	/* send_uart */
 	/* while (MXC_UART_ReadyForSleep(MXC_UART_GET_UART(CONSOLE_UART)) != E_NO_ERROR) {} */
-	current_state = STATE_PIC1;
+	timer_count=0;
+	current_state = STATE_COMPARE;
 }
 
 int main(void) {
 
-	printf("RiscV: Starting Setup...\n");
+	// printf("RiscV: Starting Setup...\n");
     /* Enable cache */
     MXC_ICC_Enable(MXC_ICC1);
 	
@@ -199,7 +200,7 @@ int main(void) {
 
 	img_capture_init();
 
-	printf("RiscV: Setup completed!\n");
+	// printf("RiscV: Setup completed!\n");
 
 	MXC_TMR_Start(OST_TIMER);
 	
@@ -207,6 +208,7 @@ int main(void) {
 		asm volatile("wfi");
 		if(current_state < NUM_STATES){
 			(*fsm[current_state].state_function)();
+			MXC_TMR_Start(OST_TIMER);
 		}
 		else{
 			/* serious error */

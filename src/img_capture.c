@@ -116,6 +116,7 @@ static uint8_t store_img(uint8_t img_type){
 
     if(base_img!=NULL){
         list_free(base_img);
+        base_img = list_create();
     }
 
     if(list_insert_array(base_img, img, w*h)==0){
@@ -123,7 +124,7 @@ static uint8_t store_img(uint8_t img_type){
         return IMG_CAP_RET_ERROR;
     }
 
-    printf("Pic size: %d stored\n", size);
+    printf("Base pic size: %d stored\n", size);
 
     return IMG_CAP_RET_SUCCESS;
 
@@ -138,23 +139,34 @@ static uint8_t img_compare(void){
     uint16_t * comp_img = (uint16_t * ) raw;
 
 
-    uint64_t SAD=0, MSE=0, i;
-    uint16_t dif, pixel_base, pixel_comp;
+    uint32_t SAD=0, i;
+    // uint32_t MSE=0;
+    uint16_t dif, *pixel_base, *pixel_comp;
     rgb_t rgb_base, rgb_comp, rgb_dif;
     for(i=0; i<(IMG_SIZE>>1); i++){
-        if(list_get(base_img, i, &pixel_base)==0){
-            return IMG_CAP_RET_ERROR;
+        if(i==0){
+            if(list_get(base_img, 0, &pixel_base)==0){
+                printf("Error to access first pixel of base\n");
+                return IMG_CAP_RET_ERROR;
+            }
         }
-        pixel_comp = comp_img[i];
+        else {
+            if(list_get_next(&pixel_base)==0){
+                printf("Error in getting pixel %d of base\n", i);
+                return IMG_CAP_RET_ERROR;
+            }
+        }
+
+        pixel_comp = &comp_img[i];
 
         /* Get color values from pixel */
-        rgb_base.r = (pixel_base & RED_MASK) >> RED_OFFSET;
-        rgb_base.g = (pixel_base & GREEN_MASK) >> GREEN_OFFSET;
-        rgb_base.b = (pixel_base & BLUE_MASK);
+        rgb_base.r = ((*pixel_base) & RED_MASK) >> RED_OFFSET;
+        rgb_base.g = ((*pixel_base) & GREEN_MASK) >> GREEN_OFFSET;
+        rgb_base.b = ((*pixel_base) & BLUE_MASK);
 
-        rgb_comp.r = (pixel_comp & RED_MASK) >> RED_OFFSET;
-        rgb_comp.g = (pixel_comp & GREEN_MASK) >> GREEN_OFFSET;
-        rgb_comp.b = (pixel_comp & BLUE_MASK);
+        rgb_comp.r = ((*pixel_comp) & RED_MASK) >> RED_OFFSET;
+        rgb_comp.g = ((*pixel_comp) & GREEN_MASK) >> GREEN_OFFSET;
+        rgb_comp.b = ((*pixel_comp) & BLUE_MASK);
 
         rgb_dif.r = (rgb_base.r > rgb_comp.r) ? (rgb_base.r - rgb_comp.r) : (rgb_comp.r - rgb_base.r);
         rgb_dif.g = (rgb_base.g > rgb_comp.g) ? (rgb_base.g - rgb_comp.g) : (rgb_comp.g - rgb_base.g);
@@ -162,16 +174,12 @@ static uint8_t img_compare(void){
 
         dif = rgb_dif.r + rgb_dif.g + rgb_dif.b;
 
-        SAD = SAD +  (uint64_t) dif;
+        SAD = SAD + dif;
 
-        MSE = MSE + ((uint64_t) dif * (uint64_t) dif) / (uint64_t) (IMG_SIZE>>1);
+        // MSE = MSE + (dif * dif) / (IMG_SIZE>>1);
     }
 
-    printf("SAD and MSE result: %u%u, %u%d\n", 
-            (uint32_t) (SAD>>32), (uint32_t) SAD,
-            (uint32_t) (MSE>>32), (uint32_t) MSE
-    );
-
+    printf("%u\n", SAD);
 
     return (SAD<SAD_THRESHOLD) ? IMG_CAP_RET_NO_CHANGE : IMG_CAP_RET_CHANGE;
 }
