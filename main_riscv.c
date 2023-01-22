@@ -84,14 +84,12 @@ void __attribute__((interrupt("machine")))TMR1_IRQHandler(void) {
 	for(i=0; i<0xFFFF; i++){
 		__NOP();
 	}
-
     timer_count+=1;
 
 }
 
 void __attribute__((interrupt("machine"))) WUT_IRQHandler(void)
 {
-	printf("RISC-V: Wakeup timer\n");
     MXC_WUT_IntClear();
     NVIC_ClearPendingIRQ(WUT_IRQn);
     NVIC_ClearPendingEVENT(WUT_IRQn);
@@ -126,28 +124,27 @@ StateMachine_t fsm[] = {
 };
 
 void fn_INIT(){
-	// printf("RiscV: State INIT\n");
+	// printf("MAIN: State INIT\n");
 	
 	current_state = STATE_PIC1;
 }
 
 void fn_Pic1(){
-	// printf("RiscV: State PIC1\n");
+	printf("MAIN: State PIC1\n");
 
 	img_capture(IMAGE_CAPTURE_BASE);
-	printf("0\n");
 	timer_count=0;
 
 	current_state = STATE_COMPARE;
 }
 
 void fn_Compare(){
-	// printf("RiscV: State COMPARE\n");
+	printf("MAIN: State COMPARE: ");
 	
 	uint8_t decision = img_capture(IMAGE_CAPTURE_COMPARE);
 
 	if(decision == IMG_CAP_RET_ERROR){
-		printf("Error in image comparison\n");
+		printf("MAIN: Error in image comparison\n");
 	}
 	else if(decision==IMG_CAP_RET_CHANGE){
 		current_state = STATE_CHANGE;
@@ -158,17 +155,17 @@ void fn_Compare(){
 }
 
 void fn_Change(){
-	// printf("RiscV: State CHANGE\n");
+	printf("MAIN: State CHANGE\n");
 
 	/* send_uart */
 	/* while (MXC_UART_ReadyForSleep(MXC_UART_GET_UART(CONSOLE_UART)) != E_NO_ERROR) {} */
 	timer_count=0;
-	current_state = STATE_COMPARE;
+	current_state = STATE_PIC1;
 }
 
 int main(void) {
 
-	// printf("RiscV: Starting Setup...\n");
+	// printf("MAIN: Starting Setup...\n");
     /* Enable cache */
     MXC_ICC_Enable(MXC_ICC1);
 	
@@ -183,7 +180,7 @@ int main(void) {
 	tmr.cmp_cnt = periodTicks;
 	tmr.pol = 0;
 	if (MXC_TMR_Init(OST_TIMER, &tmr, false) != E_NO_ERROR) {
-		printf("Failed one-shot timer Initialization.\n");
+		printf("MAIN: Failed one-shot timer Initialization.\n");
 	}
 	MXC_TMR_EnableInt(OST_TIMER);
 	MXC_TMR_EnableWakeup(OST_TIMER, &tmr);
@@ -200,7 +197,7 @@ int main(void) {
 
 	img_capture_init();
 
-	// printf("RiscV: Setup completed!\n");
+	// printf("MAIN: Setup completed!\n");
 
 	MXC_TMR_Start(OST_TIMER);
 	

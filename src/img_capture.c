@@ -120,11 +120,11 @@ static uint8_t store_img(uint8_t img_type){
     }
 
     if(list_insert_array(base_img, img, w*h)==0){
-        printf("Not enough memory!\n");
+        printf("IMG_CAP: Not enough memory!\n");
         return IMG_CAP_RET_ERROR;
     }
 
-    printf("Base pic size: %d stored\n", size);
+    printf("IMG_CAP: Base pic size: %d stored\n", size);
 
     return IMG_CAP_RET_SUCCESS;
 
@@ -146,13 +146,13 @@ static uint8_t img_compare(void){
     for(i=0; i<(IMG_SIZE>>1); i++){
         if(i==0){
             if(list_get(base_img, 0, &pixel_base)==0){
-                printf("Error to access first pixel of base\n");
+                printf("IMG_CAP: Error to access first pixel of base\n");
                 return IMG_CAP_RET_ERROR;
             }
         }
         else {
             if(list_get_next(&pixel_base)==0){
-                printf("Error in getting pixel %d of base\n", i);
+                printf("IMG_CAP: Error in getting pixel %d of base\n", i);
                 return IMG_CAP_RET_ERROR;
             }
         }
@@ -201,43 +201,43 @@ void img_capture_init(void) {
     // Initialize the camera driver.
     camera_init(CAMERA_FREQ);
 
-    printf("Init Camera");
+    printf("IMG_CAP: Init Camera");
 
     // Obtain the I2C slave address of the camera.
     slaveAddress = camera_get_slave_address();
-    printf("Camera I2C slave address is %02x\n", slaveAddress);
+    printf("IMG_CAP: Camera I2C slave address is %02x\n", slaveAddress);
 
     // Obtain the product ID of the camera.
     ret = camera_get_product_id(&id);
 
     if (ret != STATUS_OK) {
-        printf("Error returned from reading camera id. Error %d\n", ret);
+        printf("IMG_CAP: Error returned from reading camera id. Error %d\n", ret);
         return;
     }
 
-    printf("Camera Product ID is %04x\n", id);
+    printf("IMG_CAP: Camera Product ID is %04x\n", id);
 
     // Obtain the manufacture ID of the camera.
     ret = camera_get_manufacture_id(&id);
 
     if (ret != STATUS_OK) {
-        printf("Error returned from reading camera id. Error %d\n", ret);
+        printf("IMG_CAP: Error returned from reading camera id. Error %d\n", ret);
         return;
     }
 
-    printf("Camera Manufacture ID is %04x\n", id);
+    printf("IMG_CAP: Camera Manufacture ID is %04x\n", id);
 
     // Setup the camera image dimensions, pixel format and data acquiring details.
     ret = camera_setup(IMAGE_XRES, IMAGE_YRES, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel);
 
     if (ret != STATUS_OK) {
-        printf("Error returned from setting up camera. Error %d\n", ret);
+        printf("IMG_CAP: Error returned from setting up camera. Error %d\n", ret);
         return;
     }
 
     camera_write_reg(0x0c, 0x56); //camera vertical flip=0
 
     base_img = list_create();
-    printf("Base img addr: %p", base_img);
+    printf("IMG_CAP: Base img addr: %p", base_img);
 
 }
