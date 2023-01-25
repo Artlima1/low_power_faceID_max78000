@@ -55,7 +55,7 @@
 #include "mxc_delay.h"
 #include "rtc.h"
 #include "sema_regs.h"
-#include "tft_ili9341.h"
+// #include "tft_ili9341.h"
 
 /***** Definitions *****/
 //----------------------------------------------------------
@@ -110,15 +110,14 @@ int main(void) {
     MXC_LP_EnableWUTAlarmWakeup();
     NVIC_EnableIRQ(WUT_IRQn);
 
-    int i;
-    for (i = 0; i < (1 << 27); i++); // Let debugger interrupt if needed
+    MXC_Delay(300000);
 
     // MXC_WUT_Enable();
     int count;
     while(1){
         count++;
         // MXC_LP_EnterSleepMode();
-        // MXC_WUT_Enable();
+        // MXC_WUT_Init(MXC_WUT_PRES_1);
     }
 
     return 0;

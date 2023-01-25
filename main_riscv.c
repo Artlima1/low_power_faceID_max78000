@@ -58,6 +58,8 @@
 #include "lp.h"
 #include "gcfr_regs.h"
 
+#include "led.h"
+
 
 /***** Definitions *****/
 #define OST_CLOCK_SOURCE MXC_TMR_32K_CLK // \ref mxc_tmr_clock_t
@@ -69,6 +71,7 @@
 
 /***** Globals *****/
 int timer_count = 0;
+static int blink_count = 0;
 
 __attribute__((section(
     ".shared__at__mailbox"))) volatile uint32_t mail_box[ARM_MAILBOX_SIZE + RISCV_MAILBOX_SIZE];
@@ -157,13 +160,24 @@ void fn_Compare(){
 void fn_Change(){
 	printf("MAIN: State CHANGE\n");
 
+	blink_count++;
+	if(blink_count>20){
+		blink_count = 0;
+		timer_count=0;
+		current_state = STATE_PIC1;
+		LED_Off(LED2);
+	}
+	else{
+		LED_Toggle(LED2);
+	}
+
 	/* send_uart */
 	/* while (MXC_UART_ReadyForSleep(MXC_UART_GET_UART(CONSOLE_UART)) != E_NO_ERROR) {} */
-	timer_count=0;
-	current_state = STATE_PIC1;
 }
 
 int main(void) {
+
+	LED_Off(LED2);
 
 	// printf("MAIN: Starting Setup...\n");
     /* Enable cache */
