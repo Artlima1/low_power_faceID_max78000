@@ -45,7 +45,7 @@
 #include "dma.h"
 #include "icc.h"
 #include "linked_list.h"
-#include "console.h"
+
 
 #define S_MODULE_NAME "img_capture"
 
@@ -61,7 +61,7 @@
 
 #define IMG_SIZE IMAGE_XRES*IMAGE_YRES*2
 
-#define CONSOLE
+
 
 /********************************** Type Defines  *****************************/
 
@@ -258,26 +258,7 @@ void transmit_capture_uart()
 		uint32_t size, w, h;
 		// Get the details of the image from the camera driver.
 		camera_get_image(&raw, &size, &w, &h);
-		uint16_t * img_uart = (uint16_t * ) raw;
 
-        // Send the image data over the serial port...
-        MXC_TMR_SW_Start(MXC_TMR0);
-
-        // First, tell the host that we're about to send the image.
-        clear_serial_buffer();
-        snprintf(g_serial_buffer, SERIAL_BUFFER_SIZE,
-                 "*IMG* %s %i %i %i", // Format img info into a string
-				 PIXFORMAT_RGB565, size, w, h);
-        send_msg(g_serial_buffer);
-
-        // The console should now be expecting to receive 'imglen' bytes.
-
-        // Since standard image captures are buffered into SRAM, sending them
-        // over the serial port is straightforward...
-        clear_serial_buffer();
-        MXC_UART_Write(Con_Uart, raw, (int *)&size);
-
-        int elapsed = MXC_TMR_SW_Stop(MXC_TMR0);
-        printf("Done! (serial transmission took %i us)\n", elapsed);
+        utils_send_img_to_pc(raw, size, (int)w, (int)h, (uint8_t)PIXFORMAT_RGB565);
 
 }

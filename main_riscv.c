@@ -159,7 +159,6 @@ void fn_Compare(){
 
 void fn_Change(){
 	printf("MAIN: State CHANGE\n");
-	console_init();
 	transmit_capture_uart();
 	blink_count++;
 	if(blink_count>20){
