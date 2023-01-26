@@ -30,7 +30,9 @@
  * ownership rights.
  *
  ******************************************************************************/
+#include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "MAXCAM_Debug.h"
 #include "camera.h"
@@ -40,21 +42,35 @@
 #include "sema_regs.h"
 #include "tmr.h"
 #include "utils.h"
+#include "dma.h"
+#include "icc.h"
+#include "linked_list.h"
+#include "console.h"
 
 #define S_MODULE_NAME "img_capture"
 
 /* **** Globals **** */
 
-#define SAD_THRESHOLD 50
+#define POWER_ON 1
+
+#define RED_MASK        0xF800  /* 1111 1000 0000 0000 */
+#define RED_OFFSET      11
+#define GREEN_MASK      0x7E0   /* 0000 0111 1110 0000 */
+#define GREEN_OFFSET    5  
+#define BLUE_MASK       0x1F    /* 0000 0000 0001 1111 */
+
+#define IMG_SIZE IMAGE_XRES*IMAGE_YRES*2
+
+#define CONSOLE
 
 /********************************** Type Defines  *****************************/
 
 typedef struct {
-    uint16_t * img;
-    uint32_t size;
-    uint32_t h;
-    uint32_t w;
-} img_info_t;
+    uint16_t r;
+    uint16_t g;
+    uint16_t b;
+} rgb_t;
+
 
 enum {
     IMG_TP_BASE,
@@ -62,21 +78,12 @@ enum {
 };
 
 /************************************ VARIABLES ******************************/
-static void store_img(uint8_t img_type);
+static uint8_t store_img(uint8_t img_type);
 static uint8_t img_compare(void);
+void transmit_capture_uart();
 
-static img_info_t base_img = {
-    .img = NULL,
-    .h = 0,
-    .w = 0,
-    .size = 0,
-};
-static img_info_t compare_img = {
-    .img = NULL,
-    .h = 0,
-    .w = 0,
-    .size = 0
-};
+void * base_img=NULL;
+
 
 uint8_t img_capture(uint8_t capture_mode) {
     uint8_t ret = IMG_CAP_RET_ERROR;
@@ -88,13 +95,11 @@ uint8_t img_capture(uint8_t capture_mode) {
         if (camera_is_image_rcv()) {
             switch (capture_mode) {
             case IMAGE_CAPTURE_BASE: {
-                store_img(IMG_TP_BASE);
-                ret = IMG_CAP_RET_SUCCESS;
+                ret = store_img(IMG_TP_BASE);
                 break;
             }
             case IMAGE_CAPTURE_COMPARE: {
-                store_img(IMG_TP_COMP);
-                ret = img_compare() ? IMG_CAP_RET_CHANGE : IMG_CAP_RET_NO_CHANGE;
+                ret = img_compare();
                 break;
             }
             default:
@@ -104,41 +109,175 @@ uint8_t img_capture(uint8_t capture_mode) {
         }
     }
 
-    return 0;
+    return ret;
 }
 
-static void store_img(uint8_t img_type){
+static uint8_t store_img(uint8_t img_type){
     uint8_t *raw;
-    img_info_t * dest;
-
-    switch (img_type)
-    {
-        case IMG_TP_BASE:
-            dest = &base_img;
-            break;
-        case IMG_TP_COMP:
-            dest = &compare_img;
-            break;
-    }
-
-    if(dest->size != 0){
-        free(dest->img);
-    }
+    uint32_t size, w, h;
 
     // Get the details of the image from the camera driver.
-    camera_get_image(&raw, &dest->size, &dest->w, &dest->h);
-    dest->img = (uint16_t * ) malloc(dest->size);
-    memcpy(dest->img, raw, dest->size);
+    camera_get_image(&raw, &size, &w, &h);
+    uint16_t * img = (uint16_t *) raw;
+
+    if(base_img!=NULL){
+        list_free(base_img);
+        base_img = list_create();
+    }
+
+    if(list_insert_array(base_img, img, w*h)==0){
+        printf("IMG_CAP: Not enough memory!\n");
+        return IMG_CAP_RET_ERROR;
+    }
+
+    printf("IMG_CAP: Base pic size: %d stored\n", size);
+
+    return IMG_CAP_RET_SUCCESS;
 
 }
 
 static uint8_t img_compare(void){
-    uint64_t sad=0;
-    for(uint32_t i=0; i<base_img.h; i++){
-        for(uint32_t j=0; j<base_img.w; j++){
-            sad += abs(base_img.img[i][j] - compare_img.img[i][j]);
+
+    uint8_t *raw;
+    uint32_t size, w, h;
+    // Get the details of the image from the camera driver.
+    camera_get_image(&raw, &size, &w, &h);
+    uint16_t * comp_img = (uint16_t * ) raw;
+
+
+    uint32_t SAD=0, i;
+    // uint32_t MSE=0;
+    uint16_t dif, *pixel_base, *pixel_comp;
+    rgb_t rgb_base, rgb_comp, rgb_dif;
+    for(i=0; i<(IMG_SIZE>>1); i++){
+        if(i==0){
+            if(list_get(base_img, 0, &pixel_base)==0){
+                printf("IMG_CAP: Error to access first pixel of base\n");
+                return IMG_CAP_RET_ERROR;
+            }
         }
+        else {
+            if(list_get_next(&pixel_base)==0){
+                printf("IMG_CAP: Error in getting pixel %d of base\n", i);
+                return IMG_CAP_RET_ERROR;
+            }
+        }
+
+        pixel_comp = &comp_img[i];
+
+        /* Get color values from pixel */
+        rgb_base.r = ((*pixel_base) & RED_MASK) >> RED_OFFSET;
+        rgb_base.g = ((*pixel_base) & GREEN_MASK) >> GREEN_OFFSET;
+        rgb_base.b = ((*pixel_base) & BLUE_MASK);
+
+        rgb_comp.r = ((*pixel_comp) & RED_MASK) >> RED_OFFSET;
+        rgb_comp.g = ((*pixel_comp) & GREEN_MASK) >> GREEN_OFFSET;
+        rgb_comp.b = ((*pixel_comp) & BLUE_MASK);
+
+        rgb_dif.r = (rgb_base.r > rgb_comp.r) ? (rgb_base.r - rgb_comp.r) : (rgb_comp.r - rgb_base.r);
+        rgb_dif.g = (rgb_base.g > rgb_comp.g) ? (rgb_base.g - rgb_comp.g) : (rgb_comp.g - rgb_base.g);
+        rgb_dif.b = (rgb_base.b > rgb_comp.b) ? (rgb_base.b - rgb_comp.b) : (rgb_comp.b - rgb_base.b);
+
+        dif = rgb_dif.r + rgb_dif.g + rgb_dif.b;
+
+        SAD = SAD + dif;
+
+        // MSE = MSE + (dif * dif) / (IMG_SIZE>>1);
     }
 
-    return sad>SAD_THRESHOLD;
+    printf("%u\n", SAD);
+
+    return (SAD<SAD_THRESHOLD) ? IMG_CAP_RET_NO_CHANGE : IMG_CAP_RET_CHANGE;
+}
+
+void img_capture_init(void) {
+    int ret = 0;
+    int slaveAddress;
+    int id;
+    int dma_channel;
+
+    // Initialize DMA for camera interface
+    MXC_DMA_Init();
+    dma_channel = MXC_DMA_AcquireChannel();
+
+
+
+    /* Enable camera power */
+    Camera_Power(POWER_ON);
+    MXC_Delay(300000);
+
+    // Initialize the camera driver.
+    camera_init(CAMERA_FREQ);
+
+    printf("IMG_CAP: Init Camera");
+
+    // Obtain the I2C slave address of the camera.
+    slaveAddress = camera_get_slave_address();
+    printf("IMG_CAP: Camera I2C slave address is %02x\n", slaveAddress);
+
+    // Obtain the product ID of the camera.
+    ret = camera_get_product_id(&id);
+
+    if (ret != STATUS_OK) {
+        printf("IMG_CAP: Error returned from reading camera id. Error %d\n", ret);
+        return;
+    }
+
+    printf("IMG_CAP: Camera Product ID is %04x\n", id);
+
+    // Obtain the manufacture ID of the camera.
+    ret = camera_get_manufacture_id(&id);
+
+    if (ret != STATUS_OK) {
+        printf("IMG_CAP: Error returned from reading camera id. Error %d\n", ret);
+        return;
+    }
+
+    printf("IMG_CAP: Camera Manufacture ID is %04x\n", id);
+
+    // Setup the camera image dimensions, pixel format and data acquiring details.
+    ret = camera_setup(IMAGE_XRES, IMAGE_YRES, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel);
+
+    if (ret != STATUS_OK) {
+        printf("IMG_CAP: Error returned from setting up camera. Error %d\n", ret);
+        return;
+    }
+
+    camera_write_reg(0x0c, 0x56); //camera vertical flip=0
+
+    base_img = list_create();
+    printf("IMG_CAP: Base img addr: %p", base_img);
+
+
+
+}
+
+void transmit_capture_uart()
+{
+		uint8_t *raw;
+		uint32_t size, w, h;
+		// Get the details of the image from the camera driver.
+		camera_get_image(&raw, &size, &w, &h);
+		uint16_t * img_uart = (uint16_t * ) raw;
+
+        // Send the image data over the serial port...
+        MXC_TMR_SW_Start(MXC_TMR0);
+
+        // First, tell the host that we're about to send the image.
+        clear_serial_buffer();
+        snprintf(g_serial_buffer, SERIAL_BUFFER_SIZE,
+                 "*IMG* %s %i %i %i", // Format img info into a string
+				 PIXFORMAT_RGB565, size, w, h);
+        send_msg(g_serial_buffer);
+
+        // The console should now be expecting to receive 'imglen' bytes.
+
+        // Since standard image captures are buffered into SRAM, sending them
+        // over the serial port is straightforward...
+        clear_serial_buffer();
+        MXC_UART_Write(Con_Uart, raw, (int *)&size);
+
+        int elapsed = MXC_TMR_SW_Stop(MXC_TMR0);
+        printf("Done! (serial transmission took %i us)\n", elapsed);
+
 }
