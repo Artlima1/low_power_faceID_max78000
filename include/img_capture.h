@@ -31,6 +31,8 @@
  *
  ******************************************************************************/
 
+#include <stdint.h>
+
 #ifndef _IMG_CAPTURE_H_
 #define _IMG_CAPTURE_H_
 
@@ -53,8 +55,8 @@
 #define BACK_X 0
 #define BACK_Y 280
 
-#define IMAGE_XRES 170 //200
-#define IMAGE_YRES 130 //150
+#define IMAGE_XRES 40 //200
+#define IMAGE_YRES 40 //150
 
 #define HEIGHT 160
 #define WIDTH 120
@@ -75,6 +77,8 @@
 // Data input: HWC (little data): 160x120x3
 #define DATA_SIZE_IN (160 * 120 * 3)
 
+#define SAD_THRESHOLD 55000
+
 enum {
     IMAGE_CAPTURE_BASE,
     IMAGE_CAPTURE_COMPARE
@@ -86,5 +90,9 @@ enum {
     IMG_CAP_RET_NO_CHANGE,
     IMG_CAP_RET_CHANGE,
 };
+
+uint8_t img_capture(uint8_t capture_mode);
+void img_capture_send_uart(void);
+void img_capture_init(void);
 
 #endif // _IMG_CAPTURE_H_

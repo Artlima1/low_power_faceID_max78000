@@ -46,7 +46,6 @@
 #include "icc.h"
 #include "linked_list.h"
 
-
 #define S_MODULE_NAME "img_capture"
 
 /* **** Globals **** */
@@ -60,8 +59,6 @@
 #define BLUE_MASK       0x1F    /* 0000 0000 0001 1111 */
 
 #define IMG_SIZE IMAGE_XRES*IMAGE_YRES*2
-
-
 
 /********************************** Type Defines  *****************************/
 
@@ -80,10 +77,8 @@ enum {
 /************************************ VARIABLES ******************************/
 static uint8_t store_img(uint8_t img_type);
 static uint8_t img_compare(void);
-void transmit_capture_uart();
 
 void * base_img=NULL;
-
 
 uint8_t img_capture(uint8_t capture_mode) {
     uint8_t ret = IMG_CAP_RET_ERROR;
@@ -187,7 +182,11 @@ static uint8_t img_compare(void){
 
     printf("%u\n", SAD);
 
-    return (SAD<SAD_THRESHOLD) ? IMG_CAP_RET_NO_CHANGE : IMG_CAP_RET_CHANGE;
+    if (SAD<SAD_THRESHOLD){
+        return IMG_CAP_RET_NO_CHANGE;
+    }
+    utils_send_img_to_pc(raw, size, w, h, camera_get_pixel_format());
+    return IMG_CAP_RET_CHANGE;
 }
 
 void img_capture_init(void) {
@@ -199,8 +198,6 @@ void img_capture_init(void) {
     // Initialize DMA for camera interface
     MXC_DMA_Init();
     dma_channel = MXC_DMA_AcquireChannel();
-
-
 
     /* Enable camera power */
     Camera_Power(POWER_ON);
@@ -246,19 +243,14 @@ void img_capture_init(void) {
     camera_write_reg(0x0c, 0x56); //camera vertical flip=0
 
     base_img = list_create();
-    printf("IMG_CAP: Base img addr: %p", base_img);
-
-
 
 }
 
-void transmit_capture_uart()
-{
-		uint8_t *raw;
-		uint32_t size, w, h;
-		// Get the details of the image from the camera driver.
-		camera_get_image(&raw, &size, &w, &h);
 
-        utils_send_img_to_pc(raw, size, (int)w, (int)h, (uint8_t)PIXFORMAT_RGB565);
-
+void img_capture_send_uart(void) {
+    uint8_t *raw;
+    uint32_t size, w, h;
+    // Get the details of the image from the camera driver.
+    camera_get_image(&raw, &size, &w, &h);
+    utils_send_img_to_pc(raw, size, w, h, camera_get_pixel_format());
 }
