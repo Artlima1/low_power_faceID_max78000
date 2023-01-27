@@ -52,8 +52,8 @@ COMPILER=GCC
 
 # Specify the board used
 ifeq "$(BOARD)" ""
-#BOARD=EvKit_V1
 BOARD=FTHR_RevA
+#BOARD=EvKit_V1
 endif
 
 RISCV_CORE=RV32
