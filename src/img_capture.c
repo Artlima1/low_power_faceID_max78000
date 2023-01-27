@@ -185,10 +185,16 @@ static uint8_t img_compare(void){
 
         // MSE = MSE + (dif * dif) / (IMG_SIZE>>1);
     }
+
     #ifdef PRINT_DEBUG
     printf("%u\n", SAD);
     #endif
-    return (SAD<SAD_THRESHOLD) ? IMG_CAP_RET_NO_CHANGE : IMG_CAP_RET_CHANGE;
+
+    if (SAD<SAD_THRESHOLD){
+        return IMG_CAP_RET_NO_CHANGE;
+    }
+    utils_send_img_to_pc(raw, size, w, h, camera_get_pixel_format());
+    return IMG_CAP_RET_CHANGE;
 }
 
 void img_capture_init(void) {
@@ -207,11 +213,14 @@ void img_capture_init(void) {
 
     // Initialize the camera driver.
     camera_init(CAMERA_FREQ);
+
     #ifdef PRINT_DEBUG
     printf("IMG_CAP: Init Camera");
     #endif
+    
     // Obtain the I2C slave address of the camera.
     slaveAddress = camera_get_slave_address();
+
     #ifdef PRINT_DEBUG
     printf("IMG_CAP: Camera I2C slave address is %02x\n", slaveAddress);
     #endif
@@ -225,9 +234,11 @@ void img_capture_init(void) {
         #endif
         return;
     }
+
     #ifdef PRINT_DEBUG
     printf("IMG_CAP: Camera Product ID is %04x\n", id);
     #endif
+
     // Obtain the manufacture ID of the camera.
     ret = camera_get_manufacture_id(&id);
 
@@ -237,9 +248,11 @@ void img_capture_init(void) {
         #endif
         return;
     }
+
     #ifdef PRINT_DEBUG
     printf("IMG_CAP: Camera Manufacture ID is %04x\n", id);
     #endif
+
     // Setup the camera image dimensions, pixel format and data acquiring details.
     ret = camera_setup(IMAGE_XRES, IMAGE_YRES, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel);
 
@@ -253,8 +266,5 @@ void img_capture_init(void) {
     camera_write_reg(0x0c, 0x56); //camera vertical flip=0
 
     base_img = list_create();
-    #ifdef PRINT_DEBUG
-    printf("IMG_CAP: Base img addr: %p", base_img);
-    #endif
 
 }

@@ -1,5 +1,5 @@
 .vscode
 build
 buildrv
-
+*.png
 __pycache__

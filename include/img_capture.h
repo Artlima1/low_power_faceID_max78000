@@ -31,6 +31,8 @@
  *
  ******************************************************************************/
 
+#include <stdint.h>
+
 #ifndef _IMG_CAPTURE_H_
 #define _IMG_CAPTURE_H_
 

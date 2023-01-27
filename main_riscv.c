@@ -57,9 +57,7 @@
 #include "sema_regs.h"
 #include "lp.h"
 #include "gcfr_regs.h"
-
 #include "led.h"
-
 
 /***** Definitions *****/
 #define OST_CLOCK_SOURCE MXC_TMR_32K_CLK // \ref mxc_tmr_clock_t
@@ -180,9 +178,6 @@ void fn_Change(){
 	else{
 		LED_Toggle(LED2);
 	}
-
-	/* send_uart */
-	/* while (MXC_UART_ReadyForSleep(MXC_UART_GET_UART(CONSOLE_UART)) != E_NO_ERROR) {} */
 }
 
 int main(void) {
@@ -221,6 +216,7 @@ int main(void) {
 	__enable_irq();
 
 	img_capture_init();
+	
 	#ifdef PRINT_DEBUG
 	printf("Setup completed!\n");
 	#endif
