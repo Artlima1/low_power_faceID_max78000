@@ -1,35 +1,3 @@
-/******************************************************************************
- * Copyright (C) 2022 Maxim Integrated Products, Inc., All Rights Reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"),
- * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included
- * in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL MAXIM INTEGRATED BE LIABLE FOR ANY CLAIM, DAMAGES
- * OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
- * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- *
- * Except as contained in this notice, the name of Maxim Integrated
- * Products, Inc. shall not be used except as stated in the Maxim Integrated
- * Products, Inc. Branding Policy.
- *
- * The mere transfer of this software does not imply any licenses
- * of trade secrets, proprietary technology, copyrights, patents,
- * trademarks, maskwork rights, or any other form of intellectual
- * property whatsoever. Maxim Integrated Products, Inc. retains all
- * ownership rights.
- *
- ******************************************************************************/
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -39,8 +7,6 @@
 #include "img_capture.h"
 #include "led.h"
 #include "mxc_delay.h"
-#include "sema_regs.h"
-#include "tmr.h"
 #include "utils.h"
 #include "dma.h"
 #include "icc.h"
@@ -50,9 +16,6 @@
 // #define PRINT_DEBUG
 
 /* **** Globals **** */
-
-#define POWER_ON 1
-
 #define RED_MASK        0xF800  /* 1111 1000 0000 0000 */
 #define RED_OFFSET      11
 #define GREEN_MASK      0x7E0   /* 0000 0111 1110 0000 */
@@ -208,7 +171,7 @@ void img_capture_init(void) {
     dma_channel = MXC_DMA_AcquireChannel();
 
     /* Enable camera power */
-    Camera_Power(POWER_ON);
+    Camera_Power(1);
     MXC_Delay(300000);
 
     // Initialize the camera driver.
