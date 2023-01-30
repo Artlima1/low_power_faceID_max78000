@@ -39,7 +39,7 @@
  */
 
 #define S_MODULE_NAME "MAIN-RISCV"
-
+// #define PRINT_DEBUG
 /***** Includes *****/
 #include <stdint.h>
 #include <stdio.h>
@@ -57,9 +57,7 @@
 #include "sema_regs.h"
 #include "lp.h"
 #include "gcfr_regs.h"
-
 #include "led.h"
-
 
 /***** Definitions *****/
 #define OST_CLOCK_SOURCE MXC_TMR_32K_CLK // \ref mxc_tmr_clock_t
@@ -127,13 +125,17 @@ StateMachine_t fsm[] = {
 };
 
 void fn_INIT(){
-	// printf("MAIN: State INIT\n");
+	#ifdef PRINT_DEBUG
+	printf("MAIN: State INIT\n");
+	#endif
 	
 	current_state = STATE_PIC1;
 }
 
 void fn_Pic1(){
+	#ifdef PRINT_DEBUG
 	printf("MAIN: State PIC1\n");
+	#endif
 
 	img_capture(IMAGE_CAPTURE_BASE);
 	timer_count=0;
@@ -142,12 +144,16 @@ void fn_Pic1(){
 }
 
 void fn_Compare(){
+	#ifdef PRINT_DEBUG
 	printf("MAIN: State COMPARE: ");
+	#endif
 	
 	uint8_t decision = img_capture(IMAGE_CAPTURE_COMPARE);
 
 	if(decision == IMG_CAP_RET_ERROR){
+		#ifdef PRINT_DEBUG
 		printf("MAIN: Error in image comparison\n");
+		#endif
 	}
 	else if(decision==IMG_CAP_RET_CHANGE){
 		current_state = STATE_CHANGE;
@@ -158,7 +164,9 @@ void fn_Compare(){
 }
 
 void fn_Change(){
+	#ifdef PRINT_DEBUG
 	printf("MAIN: State CHANGE\n");
+	#endif
 
 	blink_count++;
 	if(blink_count>20){
@@ -170,16 +178,12 @@ void fn_Change(){
 	else{
 		LED_Toggle(LED2);
 	}
-
-	/* send_uart */
-	/* while (MXC_UART_ReadyForSleep(MXC_UART_GET_UART(CONSOLE_UART)) != E_NO_ERROR) {} */
 }
 
 int main(void) {
 
 	LED_Off(LED2);
 
-	// printf("MAIN: Starting Setup...\n");
     /* Enable cache */
     MXC_ICC_Enable(MXC_ICC1);
 	
@@ -194,7 +198,9 @@ int main(void) {
 	tmr.cmp_cnt = periodTicks;
 	tmr.pol = 0;
 	if (MXC_TMR_Init(OST_TIMER, &tmr, false) != E_NO_ERROR) {
+		#ifdef PRINT_DEBUG
 		printf("MAIN: Failed one-shot timer Initialization.\n");
+		#endif
 	}
 	MXC_TMR_EnableInt(OST_TIMER);
 	MXC_TMR_EnableWakeup(OST_TIMER, &tmr);
@@ -210,9 +216,10 @@ int main(void) {
 	__enable_irq();
 
 	img_capture_init();
-
-	// printf("MAIN: Setup completed!\n");
-
+	
+	#ifdef PRINT_DEBUG
+	printf("Setup completed!\n");
+	#endif
 	MXC_TMR_Start(OST_TIMER);
 	
 	while(1){
