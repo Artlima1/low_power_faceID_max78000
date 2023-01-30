@@ -7,7 +7,7 @@ The whole product will be placed in the user's room, when there are changes in t
 ### Hardware Requirements
 The projrct uses MAX78000 series Dual-Core Ultra-Low-Power Microcontroller board. Our program is performed on [MAX78000_FTHR board](https://www.analog.com/media/en/technical-documentation/data-sheets/max78000fthr.pdf).
 
-![Board pic](https://www.analog.com/-/media/analog/en/evaluation-board-maxim-images/max78000fthr.jpg?imgver=1&h=270&hash=290709D8D68B29A194FE60CCF35E6F35)
+![Board pic](https://www.analog.com/-/media/analog/en/evaluation-board-maxim-images/max78000fthr.jpg?imgver=1&h=500&hash=3737EC97528753F233BBCDCFE5E78B0E)
 
 To upload the firmware for the first time use, you can follow the instruction [here](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/MAX78000_Feather/README.md#first-time-firmware-updates).
 
@@ -17,7 +17,28 @@ Also a ESP Wi-Fi Development Board is required,here we use the [ESP8266 board](h
 ### Software Requirements
 
 ## Project Layout  
-
+    ├─ include
+    │  ├─ img_capture.h
+    │  ├─ linked_list.h
+    │  ├─ MAXCAM_Debug.h
+    │  └─ utils.h
+    ├─ main.c           #ARM core main code
+    ├─ main_riscv.c     #Risc_v core main code
+    ├─ Makefile         
+    ├─ Makefile.ARM     #ARM core makefile
+    ├─ Makefile.RISCV   #Risc_v core makefile
+    ├─ pc_utility       #Python console on PC
+    │  ├─ comManager.py
+    │  ├─ grab_image.py
+    │  ├─ imgConverter.py
+    │  ├─ README.md
+    │  └─ requirements.txt
+    ├─ README.md
+    ├─ risc_v_img_capture.launch
+    └─ src              #Source code of project
+    ├─ img_capture.c
+    ├─ linked_list.c
+    └─ utils.c
 ## Getting Started
 
 ### 1. Required Connections  
@@ -38,13 +59,8 @@ To burn the program:
 3. This should mass erase the flash of the target device.
 
 ### 4. How to Visualize the Picture on PC  
-Please follow the instructions [here](.utils/__pycache__/README.md)
+
 
 ## Links to Powerpoint and Youtube Video
-
-
-
-
-
-
-
+[PowerPoint](https://docs.google.com/presentation/d/1iDG8Hwt4incC3QIWbK0QsuGcLuzB3y-jmzu0u0kR7mA/edit?usp=sharing)  
+[Video]
