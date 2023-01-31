@@ -1,24 +1,30 @@
-# MAX78000 Risc-V Mini Closed-Circuit Television
+# MAX78000 Risc-V Environment change detector
 
 ## Introduction
 
-Our project aims to use the image capture capabilities of the MAX78000_FTHR to detect if there's an unintended person enters the monitered area.
+Our project aims to use the image capture capabilities of the MAX78000_FTHR to detect if there's significant change in the monitored area.
 
-The board will be fixed at the location you want to monitor, the cable is connected directly to the security room, when someone enters the monitoring area, the security room will receive the image through UART connection.
+The board will be fixed at the location you want to monitor, when something happens in the  area, the picture will be sent to a PC through UART connection and then uploaded to a cloud storage. The user can get the image from the cloud.
 
 ## Requirements
 
 ### Hardware Requirements
 
-The projrct uses MAX78000 series Dual-Core Ultra-Low-Power Microcontroller board. Our program is performed on [MAX78000_FTHR board](https://www.analog.com/media/en/technical-documentation/data-sheets/max78000fthr.pdf).
+The project uses MAX78000 series Dual-Core Ultra-Low-Power Microcontroller board. Our program is performed on [MAX78000_FTHR board](https://www.analog.com/media/en/technical-documentation/data-sheets/max78000fthr.pdf).
 
-![Board pic](https://www.mouser.it/images/maxim/lrg/MAX78000FTHR_DSL.jpg)
+![Board pic](./images/max78000fthr.jpg)
 
-To upload the firmware for the first time use, you can follow the instruction [here](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/MAX78000_Feather/README.md#first-time-firmware-updates).
+To upload the firmware for the first time use, you can follow the instructions [here](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/MAX78000_Feather/README.md#first-time-firmware-updates).
 
 ### Software Requirements
 
-No special software requirements. For detailed operational steps please refer to ["How to build, Flash and Debug the example"](#how-to-build-flash-and-debug-the-example)
+The SDK for MAX78000 that can be found in this section: ["How to build, Flash and Debug the example"](#2-how-to-build-flash-and-debug-the-example).  
+
+Python3 installed in PC to support the image transfer and upload tool.  
+For the Python terminal, use `pip install -r requirements.txt` to install all dependencies.
+
+You may need to install png and serial and opencv python library on your machine.
+
 
 ## Project Layout  
 
@@ -47,20 +53,17 @@ No special software requirements. For detailed operational steps please refer to
 
 ## Getting Started  
 
-### Required Connections  
+### 1.  Required Connections  
 
-• Connect a USB cable between the PC and the CN1 (USB/PWR) connector of the Feather Board and another USB cable between PC and ESP8266.  
-• Connect the UART2 pins of the Feather Board with the UART0 pins of the ESP8266 Board.  
-• Connect the grounds of two boards.  
-• Open a terminal application on the PC and connect to the EV kit's console UART at 115200, 8-N-1.
+Connect a USB cable between the PC and the CN1 (USB/PWR) connector of the Feather Board.  
 
-### How to Build, Flash and Debug the Example  
+### 2.  How to Build, Flash and Debug the Example  
 
 Please follow the instructions in [Getting Started with the MAX78000FTHR](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/MAX78000_Feather/README.md#getting-started-with-the-max78000fthr)
 
 If you are using Visual Studio Code as your platform, please follow the instructions  [here](.vscode/readme.md).
 
-### How to Burn the Application  
+### 3. How to Burn the Application  
 
 To burn the program:
 
@@ -68,11 +71,16 @@ To burn the program:
 2. Create an empty text file named 'erase.act' and Drag-and-drop it onto the DAPLINK drive.
 3. This should mass erase the flash of the target device.
 
-### How to Visualize the Picture on PC  
+### 4. How to Visualize the Picture on PC and send to the cloud
 
-Please follow the instructions [here](./pc_utility/README.md).
+To upload the picture to the cloud, first create a Firebase application, get it's SDK file (JSON) and put it in this folder. After that, just change the name of the file and the firebase application link in upload.py
+
+Run:  python grab_image.py <comport>  
+
+Ex:sudo python3 grab_image.py /dev/ttyACM0
+
 
 ## Links to Powerpoint and Youtube Video
 
 [PowerPoint](https://docs.google.com/presentation/d/1iDG8Hwt4incC3QIWbK0QsuGcLuzB3y-jmzu0u0kR7mA/edit?usp=sharing)  
-[Video]
+[Video](https://youtu.be/qPhET3jG1A0)
