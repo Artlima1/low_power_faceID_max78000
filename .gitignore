@@ -3,3 +3,4 @@ build
 buildrv
 *.png
 __pycache__
+*firebase-adminsdk*.json

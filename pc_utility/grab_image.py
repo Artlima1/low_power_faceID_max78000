@@ -4,6 +4,7 @@ from datetime import datetime
 import sys
 import comManager
 import imgConverter
+import upload
 
 if len(sys.argv) == 3:
 	comport  = sys.argv[1]
@@ -76,6 +77,9 @@ while True:
 			img_name = datetime.now().strftime("%d.%m.%Y-%H:%M:%S")
 			img_name += ".png"
 			imgConverter.convert(image, img_name, w, h, pixelformat.decode('ASCII'))
+
+			upload.upload_to_firebase(img_name)
+
 			#hex_string = "".join("%02x" % b for b in image)
 			#print (hex_string)
 			#image_file = open("Image.txt", "w")
