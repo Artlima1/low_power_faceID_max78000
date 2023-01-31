@@ -1,18 +1,14 @@
 import time
-import cv2
 from datetime import datetime
 import sys
 import comManager
 import imgConverter
 import upload
 
-if len(sys.argv) == 3:
-	comport  = sys.argv[1]
-	baudRate = sys.argv[2]
-else:
-	comport  = sys.argv[1]
-	# Setup the default baudrate.
-	baudRate = 921600  # 115200
+
+comport  = sys.argv[1]
+# Setup the default baudrate.
+baudRate = 115200
 
 READ_TIMEOUT = 15
 

@@ -68,7 +68,7 @@
 #define X_START 45
 #define Y_START 30
 
-#define SAD_THRESHOLD 55000
+#define SAD_THRESHOLD 60000
 
 enum {
     IMAGE_CAPTURE_BASE,

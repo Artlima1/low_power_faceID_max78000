@@ -1,6 +1,6 @@
 .vscode
 build
 buildrv
-*.png
+pc_utility/*.png
 __pycache__
 *firebase-adminsdk*.json

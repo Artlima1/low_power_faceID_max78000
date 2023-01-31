@@ -1,10 +1,9 @@
-
 from firebase_admin import credentials, initialize_app, storage
 
-def upload_to_firebase(fileName):
-    cred = credentials.Certificate("max78000-img-capture-firebase-adminsdk-3qmu4-5b275f2270.json")
-    initialize_app(cred, {'storageBucket': 'max78000-img-capture.appspot.com'})
+cred = credentials.Certificate("max78000-img-capture-firebase-adminsdk-3qmu4-5b275f2270.json")
+initialize_app(cred, {'storageBucket': 'max78000-img-capture.appspot.com'})
 
+def upload_to_firebase(fileName):
     # Put your local file path
     bucket = storage.bucket()
     blob = bucket.blob(fileName)
