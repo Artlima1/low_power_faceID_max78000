@@ -1,45 +1,3 @@
-/******************************************************************************
- * Copyright (C) 2022 Maxim Integrated Products, Inc., All Rights Reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"),
- * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included
- * in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL MAXIM INTEGRATED BE LIABLE FOR ANY CLAIM, DAMAGES
- * OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
- * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- *
- * Except as contained in this notice, the name of Maxim Integrated
- * Products, Inc. shall not be used except as stated in the Maxim Integrated
- * Products, Inc. Branding Policy.
- *
- * The mere transfer of this software does not imply any licenses
- * of trade secrets, proprietary technology, copyrights, patents,
- * trademarks, maskwork rights, or any other form of intellectual
- * property whatsoever. Maxim Integrated Products, Inc. retains all
- * ownership rights.
- *
- ******************************************************************************/
-/*
- * @file    main_riscv.c
- * @brief   FaceID EvKit Demo
- *
- * @details
- *
- */
-
-#define S_MODULE_NAME "MAIN-RISCV"
-// #define PRINT_DEBUG
 /***** Includes *****/
 #include <stdint.h>
 #include <stdio.h>
@@ -58,6 +16,10 @@
 #include "lp.h"
 #include "gcfr_regs.h"
 #include "led.h"
+#include "mxc_delay.h"
+
+#define S_MODULE_NAME "MAIN-RISCV"
+#define PRINT_DEBUG
 
 /***** Definitions *****/
 #define OST_CLOCK_SOURCE MXC_TMR_32K_CLK // \ref mxc_tmr_clock_t
@@ -65,16 +27,11 @@
 #define OST_FREQ 10 // (Hz)
 #define OST_TIMER MXC_TMR1 // Can be MXC_TMR0 through MXC_TMR5
 
-#define COMPS_PER_BASE_PIC 100
+#define COMPS_PER_BASE_PIC 1000
 
 /***** Globals *****/
 int timer_count = 0;
 static int blink_count = 0;
-
-__attribute__((section(
-    ".shared__at__mailbox"))) volatile uint32_t mail_box[ARM_MAILBOX_SIZE + RISCV_MAILBOX_SIZE];
-volatile uint32_t *arm_mail_box = &mail_box[0];
-volatile uint32_t *riscv_mail_box = &mail_box[ARM_MAILBOX_SIZE];
 
 void __attribute__((interrupt("machine")))TMR1_IRQHandler(void) {
     // Clear interrupt
@@ -128,7 +85,12 @@ void fn_INIT(){
 	#ifdef PRINT_DEBUG
 	printf("MAIN: State INIT\n");
 	#endif
-	
+
+	img_capture_init();
+
+	/* Camera need some exposition time after init */
+	MXC_Delay(SEC(2));
+
 	current_state = STATE_PIC1;
 }
 
@@ -169,10 +131,10 @@ void fn_Change(){
 	#endif
 
 	blink_count++;
-	if(blink_count>20){
+	if(blink_count>50){
 		blink_count = 0;
 		timer_count=0;
-		current_state = STATE_PIC1;
+		current_state = STATE_COMPARE;
 		LED_Off(LED2);
 	}
 	else{
@@ -214,8 +176,6 @@ int main(void) {
     NVIC_EnableEVENT(WUT_IRQn);
 
 	__enable_irq();
-
-	img_capture_init();
 	
 	#ifdef PRINT_DEBUG
 	printf("Setup completed!\n");

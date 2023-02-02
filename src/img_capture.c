@@ -1,35 +1,3 @@
-/******************************************************************************
- * Copyright (C) 2022 Maxim Integrated Products, Inc., All Rights Reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"),
- * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included
- * in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL MAXIM INTEGRATED BE LIABLE FOR ANY CLAIM, DAMAGES
- * OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
- * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- *
- * Except as contained in this notice, the name of Maxim Integrated
- * Products, Inc. shall not be used except as stated in the Maxim Integrated
- * Products, Inc. Branding Policy.
- *
- * The mere transfer of this software does not imply any licenses
- * of trade secrets, proprietary technology, copyrights, patents,
- * trademarks, maskwork rights, or any other form of intellectual
- * property whatsoever. Maxim Integrated Products, Inc. retains all
- * ownership rights.
- *
- ******************************************************************************/
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -44,56 +12,59 @@
 #include "utils.h"
 #include "dma.h"
 #include "icc.h"
-#include "linked_list.h"
 
 #define S_MODULE_NAME "img_capture"
 // #define PRINT_DEBUG
 
 /* **** Globals **** */
 
-#define POWER_ON 1
+#define DIF(a, b) (a>b) ? (a-b) : (b-a)
 
-#define RED_MASK        0xF800  /* 1111 1000 0000 0000 */
-#define RED_OFFSET      11
-#define GREEN_MASK      0x7E0   /* 0000 0111 1110 0000 */
-#define GREEN_OFFSET    5  
-#define BLUE_MASK       0x1F    /* 0000 0000 0001 1111 */
+#define RED_MASK 0xF800 /* 1111 1000 0000 0000 */
+#define RED_OFFSET 11
+#define GREEN_MASK 0x7E0 /* 0000 0111 1110 0000 */
+#define GREEN_OFFSET 5
+#define BLUE_MASK 0x1F /* 0000 0000 0001 1111 */
 
-#define IMG_SIZE IMAGE_XRES*IMAGE_YRES*2
+#define BLOCKS_X (IMAGE_XRES / BLOCK_PIXEL_W)
+#define BLOCKS_Y (IMAGE_YRES / BLOCK_PIXEL_H)
+#define BLOCKS_IN_CLUSTER (BLOCKS_X * BLOCKS_Y)
 
-/********************************** Type Defines  *****************************/
+#define RGB_PIXEL_SIZE sizeof(rgb_t)
+#define CLUSTER_SIZE (BLOCKS_IN_CLUSTER * RGB_PIXEL_SIZE)
 
-typedef struct {
-    uint16_t r;
-    uint16_t g;
-    uint16_t b;
-} rgb_t;
-
-enum {
-    IMG_TP_BASE,
-    IMG_TP_COMP, 
-};
+#define CHECK_TOLERANCE(rgb) ((DIF(rgb.r, rgb.g)<LIGHT_TOLERANCE) && (DIF(rgb.r, rgb.b)<LIGHT_TOLERANCE ) && (DIF(rgb.g, rgb.b)<LIGHT_TOLERANCE))
 
 /************************************ VARIABLES ******************************/
-static uint8_t store_img(uint8_t img_type);
+
+rgb_t base_img[CLUSTER_SIZE];
+
+/************************************ Local Functions Declarations ******************************/
+static uint8_t take_base();
 static uint8_t img_compare(void);
+static void clusterize_image(uint16_t * img, rgb_t * dest);
 
-void * base_img=NULL;
-
-uint8_t img_capture(uint8_t capture_mode) {
+/************************************ Extern Functions ******************************/
+uint8_t img_capture(uint8_t capture_mode)
+{
     uint8_t ret = IMG_CAP_RET_ERROR;
 
     camera_start_capture_image();
 
-    while (1) {
+    while (1)
+    {
         /* Check if camera image is ready to process */
-        if (camera_is_image_rcv()) {
-            switch (capture_mode) {
-            case IMAGE_CAPTURE_BASE: {
-                ret = store_img(IMG_TP_BASE);
+        if (camera_is_image_rcv())
+        {
+            switch (capture_mode)
+            {
+            case IMAGE_CAPTURE_BASE:
+            {
+                ret = take_base();
                 break;
             }
-            case IMAGE_CAPTURE_COMPARE: {
+            case IMAGE_CAPTURE_COMPARE:
+            {
                 ret = img_compare();
                 break;
             }
@@ -107,97 +78,8 @@ uint8_t img_capture(uint8_t capture_mode) {
     return ret;
 }
 
-static uint8_t store_img(uint8_t img_type){
-    uint8_t *raw;
-    uint32_t size, w, h;
-
-    // Get the details of the image from the camera driver.
-    camera_get_image(&raw, &size, &w, &h);
-    uint16_t * img = (uint16_t *) raw;
-
-    if(base_img!=NULL){
-        list_free(base_img);
-        base_img = list_create();
-    }
-
-    if(list_insert_array(base_img, img, w*h)==0){
-        #ifdef PRINT_DEBUG
-        printf("IMG_CAP: Not enough memory!\n");
-        #endif
-        return IMG_CAP_RET_ERROR;
-    }
-    #ifdef PRINT_DEBUG
-    printf("IMG_CAP: Base pic size: %d stored\n", size);
-    #endif
-    return IMG_CAP_RET_SUCCESS;
-
-}
-
-static uint8_t img_compare(void){
-
-    uint8_t *raw;
-    uint32_t size, w, h;
-    // Get the details of the image from the camera driver.
-    camera_get_image(&raw, &size, &w, &h);
-    uint16_t * comp_img = (uint16_t * ) raw;
-
-
-    uint32_t SAD=0, i;
-    // uint32_t MSE=0;
-    uint16_t dif, *pixel_base, *pixel_comp;
-    rgb_t rgb_base, rgb_comp, rgb_dif;
-    for(i=0; i<(IMG_SIZE>>1); i++){
-        if(i==0){
-            if(list_get(base_img, 0, &pixel_base)==0){
-                #ifdef PRINT_DEBUG
-                printf("IMG_CAP: Error to access first pixel of base\n");
-                #endif
-                return IMG_CAP_RET_ERROR;
-            }
-        }
-        else {
-            if(list_get_next(&pixel_base)==0){
-                #ifdef PRINT_DEBUG
-                printf("IMG_CAP: Error in getting pixel %d of base\n", i);
-                #endif
-                return IMG_CAP_RET_ERROR;
-            }
-        }
-
-        pixel_comp = &comp_img[i];
-
-        /* Get color values from pixel */
-        rgb_base.r = ((*pixel_base) & RED_MASK) >> RED_OFFSET;
-        rgb_base.g = ((*pixel_base) & GREEN_MASK) >> GREEN_OFFSET;
-        rgb_base.b = ((*pixel_base) & BLUE_MASK);
-
-        rgb_comp.r = ((*pixel_comp) & RED_MASK) >> RED_OFFSET;
-        rgb_comp.g = ((*pixel_comp) & GREEN_MASK) >> GREEN_OFFSET;
-        rgb_comp.b = ((*pixel_comp) & BLUE_MASK);
-
-        rgb_dif.r = (rgb_base.r > rgb_comp.r) ? (rgb_base.r - rgb_comp.r) : (rgb_comp.r - rgb_base.r);
-        rgb_dif.g = (rgb_base.g > rgb_comp.g) ? (rgb_base.g - rgb_comp.g) : (rgb_comp.g - rgb_base.g);
-        rgb_dif.b = (rgb_base.b > rgb_comp.b) ? (rgb_base.b - rgb_comp.b) : (rgb_comp.b - rgb_base.b);
-
-        dif = rgb_dif.r + rgb_dif.g + rgb_dif.b;
-
-        SAD = SAD + dif;
-
-        // MSE = MSE + (dif * dif) / (IMG_SIZE>>1);
-    }
-
-    #ifdef PRINT_DEBUG
-    printf("%u\n", SAD);
-    #endif
-
-    if (SAD<SAD_THRESHOLD){
-        return IMG_CAP_RET_NO_CHANGE;
-    }
-    utils_send_img_to_pc(raw, size, w, h, camera_get_pixel_format());
-    return IMG_CAP_RET_CHANGE;
-}
-
-void img_capture_init(void) {
+void img_capture_init(void)
+{
     int ret = 0;
     int slaveAddress;
     int id;
@@ -208,63 +90,149 @@ void img_capture_init(void) {
     dma_channel = MXC_DMA_AcquireChannel();
 
     /* Enable camera power */
-    Camera_Power(POWER_ON);
+    Camera_Power(1);
     MXC_Delay(300000);
 
     // Initialize the camera driver.
     camera_init(CAMERA_FREQ);
 
-    #ifdef PRINT_DEBUG
+#ifdef PRINT_DEBUG
     printf("IMG_CAP: Init Camera");
-    #endif
-    
+#endif
+
     // Obtain the I2C slave address of the camera.
     slaveAddress = camera_get_slave_address();
 
-    #ifdef PRINT_DEBUG
+#ifdef PRINT_DEBUG
     printf("IMG_CAP: Camera I2C slave address is %02x\n", slaveAddress);
-    #endif
+#endif
 
     // Obtain the product ID of the camera.
     ret = camera_get_product_id(&id);
 
-    if (ret != STATUS_OK) {
-        #ifdef PRINT_DEBUG
+    if (ret != STATUS_OK)
+    {
+#ifdef PRINT_DEBUG
         printf("IMG_CAP: Error returned from reading camera id. Error %d\n", ret);
-        #endif
+#endif
         return;
     }
 
-    #ifdef PRINT_DEBUG
+#ifdef PRINT_DEBUG
     printf("IMG_CAP: Camera Product ID is %04x\n", id);
-    #endif
+#endif
 
     // Obtain the manufacture ID of the camera.
     ret = camera_get_manufacture_id(&id);
 
-    if (ret != STATUS_OK) {
-        #ifdef PRINT_DEBUG
+    if (ret != STATUS_OK)
+    {
+#ifdef PRINT_DEBUG
         printf("IMG_CAP: Error returned from reading camera id. Error %d\n", ret);
-        #endif
+#endif
         return;
     }
 
-    #ifdef PRINT_DEBUG
+#ifdef PRINT_DEBUG
     printf("IMG_CAP: Camera Manufacture ID is %04x\n", id);
-    #endif
+#endif
 
     // Setup the camera image dimensions, pixel format and data acquiring details.
     ret = camera_setup(IMAGE_XRES, IMAGE_YRES, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel);
 
-    if (ret != STATUS_OK) {
-        #ifdef PRINT_DEBUG
+    if (ret != STATUS_OK)
+    {
+#ifdef PRINT_DEBUG
         printf("IMG_CAP: Error returned from setting up camera. Error %d\n", ret);
-        #endif
+#endif
         return;
     }
 
-    camera_write_reg(0x0c, 0x56); //camera vertical flip=0
+    camera_write_reg(0x0c, 0x56); // camera vertical flip=0
 
-    base_img = list_create();
+}
 
+/************************************ Local Functions Declarations ******************************/
+
+static uint8_t take_base()
+{
+    uint8_t *raw;
+    uint32_t size, w, h;
+
+    camera_get_image(&raw, &size, &w, &h);
+
+    clusterize_image((uint16_t *) raw, base_img);
+
+    /* TODO - Store original in Flash */
+
+    utils_send_img_to_pc(raw, size, w, h, camera_get_pixel_format());
+
+    return IMG_CAP_RET_SUCCESS;
+}
+
+static uint8_t img_compare(void)
+{
+    uint8_t *raw;
+    uint32_t size, w, h;
+    rgb_t comp_img[CLUSTER_SIZE];
+
+    camera_get_image(&raw, &size, &w, &h);
+    clusterize_image((uint16_t *) raw, comp_img);
+
+    uint32_t SAD = 0, i, dif;
+    rgb_t rgb_dif;
+    for (i = 0; i < BLOCKS_IN_CLUSTER; i++)
+    {
+        rgb_dif.r = DIF(base_img[i].r, comp_img[i].r);
+        rgb_dif.g = DIF(base_img[i].g, comp_img[i].g);
+        rgb_dif.b = DIF(base_img[i].b, comp_img[i].b);
+
+        dif = rgb_dif.r + rgb_dif.g + rgb_dif.b;
+
+        if(dif < MIN_BLOCK_DIF){
+            continue;
+        }
+
+        SAD = SAD + dif;
+    }
+
+#ifdef PRINT_DEBUG
+    printf("%u\n", SAD);
+#endif
+
+    if (SAD < SAD_THRESHOLD)
+    {
+        return IMG_CAP_RET_NO_CHANGE;
+    }
+
+#ifdef SEND_UART
+    utils_send_img_to_pc(raw, size, w, h, camera_get_pixel_format());
+#endif
+
+    return IMG_CAP_RET_CHANGE;
+}
+
+static void clusterize_image(uint16_t * img, rgb_t * dest){
+    memset(dest, 0, CLUSTER_SIZE);
+
+    uint8_t bx, by, px, py;
+    rgb_t block_value;
+    uint16_t * pixel;
+    for(bx = 0; bx < BLOCKS_X; bx++){
+        for(by=0; by < BLOCKS_Y; by++){
+            memset(&block_value, 0, sizeof(rgb_t));
+
+            for(px=0; px < BLOCK_PIXEL_W; px++){
+                for(py=0; py < BLOCK_PIXEL_H; py++){
+                    pixel = &img[(by*BLOCK_PIXEL_H + py)*IMAGE_XRES + (bx*BLOCK_PIXEL_W + px)];
+
+                    block_value.r += ((*pixel) & RED_MASK) >> RED_OFFSET;
+                    block_value.g += ((*pixel) & GREEN_MASK) >> GREEN_OFFSET;
+                    block_value.b += ((*pixel) & BLUE_MASK);
+                }
+            }
+
+            memcpy(&dest[by*BLOCKS_X + bx], &block_value, sizeof(rgb_t));
+        }
+    }
 }
