@@ -35,8 +35,8 @@
 #define _FACEID_H_
 
 #define CAMERA_FREQ (10 * 1000 * 1000)
-#define LP_MODE_ENABLE
-#define LP_MODE 4 // 0:NO SLEEP, 1:SLEEP, 2:LPM, 3:UPM, 4:STANDBY, 5:BACKUP, 6:POWERDOWN
+//#define LP_MODE_ENABLE
+#define LP_MODE 4 // 0:NO SLEEP, 1:SLEEP, 2:LPM, 3:UPM, 4:STANDBY, 5:BACKUP, 6:POWERDOWN*/
 
 #define CAPTURE_X 50
 #define CAPTURE_Y 290
@@ -47,14 +47,14 @@
 #define BACK_X 0
 #define BACK_Y 280
 
-#define IMAGE_XRES 200
-#define IMAGE_YRES 150
+#define IMAGE_XRES 100//200
+#define IMAGE_YRES 100//150
 
-#define HEIGHT 160
-#define WIDTH 120
+#define HEIGHT 100//160
+#define WIDTH 80//120
 #define THICKNESS 4
-#define IMAGE_H 150
-#define IMAGE_W 200
+#define IMAGE_H 100//150
+#define IMAGE_W 100//200
 #define FRAME_COLOR 0x535A
 
 #define X_START 45

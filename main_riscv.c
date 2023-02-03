@@ -47,7 +47,6 @@
 #include "MAXCAM_Debug.h"
 #include "board.h"
 #include "camera.h"
-#include "img_capture.h"
 #include "dma.h"
 #include "fcr_regs.h"
 #include "icc.h"
@@ -58,6 +57,15 @@
 #include "lp.h"
 #include "gcfr_regs.h"
 #include "led.h"
+#include "MAXCAM_Debug.h"
+#include "embedding_process.h"
+#include "keypad.h"
+#include "rtc.h"
+#include "cnn.h"
+
+#include "img_capture.h"
+#include "faceID.h"
+#include "state.h"
 
 /***** Definitions *****/
 #define OST_CLOCK_SOURCE MXC_TMR_32K_CLK // \ref mxc_tmr_clock_t
@@ -156,6 +164,18 @@ void fn_Compare(){
 		#endif
 	}
 	else if(decision==IMG_CAP_RET_CHANGE){
+		int key;
+		State *state;
+		key=KEY_1;
+		/* Display Home page */
+    	state_init();
+		while (1) { //TFT Demo
+        /* Get current screen state */
+        state = state_get_current();
+        if (key > 0) {
+            state->prcss_key(key);
+        }
+    }
 		current_state = STATE_CHANGE;
 	}
 	else if(timer_count>=COMPS_PER_BASE_PIC){
@@ -181,11 +201,32 @@ void fn_Change(){
 }
 
 int main(void) {
+	
+
+	// Wait for PMIC 1.8V to become available, about 180ms after power up.
+    MXC_Delay(200000);
 
 	LED_Off(LED2);
 
     /* Enable cache */
     MXC_ICC_Enable(MXC_ICC1);
+
+	// Enable peripheral, enable CNN interrupt, turn on CNN clock
+    // CNN clock: 50 MHz div 1
+    cnn_enable(MXC_S_GCR_PCLKDIV_CNNCLKSEL_PCLK, MXC_S_GCR_PCLKDIV_CNNCLKDIV_DIV1);
+    cnn_init(); // Bring CNN state machine into consistent state
+    cnn_load_weights(); // Load CNN kernels
+    cnn_load_bias(); // Load CNN bias
+    cnn_configure(); // Configure CNN state machine
+
+	if (init_database() < 0) {
+        PR_ERR("Could not initialize the database");
+        return -1;
+    }
+
+    /* Initialize RTC */
+    MXC_RTC_Init(0, 0);
+    MXC_RTC_Start();
 	
 	// Config Timer
 	mxc_tmr_cfg_t tmr;

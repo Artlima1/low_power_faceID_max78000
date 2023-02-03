@@ -211,10 +211,10 @@ int main(void)
     int id;
     int dma_channel;
 
-#ifdef BOARD_FTHR_REVA
+
     // Wait for PMIC 1.8V to become available, about 180ms after power up.
     MXC_Delay(200000);
-#endif
+
     /* Enable cache */
     MXC_ICC_Enable(MXC_ICC0);
 
@@ -239,45 +239,6 @@ int main(void)
     MXC_RTC_Init(0, 0);
     MXC_RTC_Start();
 
-    // Initialize DMA for camera interface
-    MXC_DMA_Init();
-    dma_channel = MXC_DMA_AcquireChannel();
-
-#ifdef BOARD_FTHR_REVA
-    /* Enable camera power */
-    Camera_Power(POWER_ON);
-    MXC_Delay(300000);
-    PR_DEBUG("\n\nFaceID Feather Demo\n");
-#else
-    PR_DEBUG("\n\nFaceID Evkit Demo\n");
-#endif
-
-    // Initialize the camera driver.
-    camera_init(CAMERA_FREQ);
-
-    // Obtain the I2C slave address of the camera.
-    slaveAddress = camera_get_slave_address();
-    PR_DEBUG("Camera I2C slave address is %02x\n", slaveAddress);
-
-    // Obtain the product ID of the camera.
-    ret = camera_get_product_id(&id);
-
-    if (ret != STATUS_OK) {
-        PR_ERR("Error returned from reading camera id. Error %d\n", ret);
-        return -1;
-    }
-
-    PR_DEBUG("Camera Product ID is %04x\n", id);
-
-    // Obtain the manufacture ID of the camera.
-    ret = camera_get_manufacture_id(&id);
-
-    if (ret != STATUS_OK) {
-        PR_ERR("Error returned from reading camera id. Error %d\n", ret);
-        return -1;
-    }
-
-    PR_DEBUG("Camera Manufacture ID is %04x\n", id);
 
 #if 0
 
@@ -288,72 +249,11 @@ int main(void)
 
 #endif
 
-    // Setup the camera image dimensions, pixel format and data acquiring details.
-    ret = camera_setup(IMAGE_XRES, IMAGE_YRES, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA,
-                       dma_channel);
 
-    if (ret != STATUS_OK) {
-        PR_ERR("Error returned from setting up camera. Error %d\n", ret);
-        return -1;
-    }
-
-#ifdef TFT_ENABLE
-#ifdef BOARD_EVKIT_V1
-    /* Initialize TFT display */
-    MXC_TFT_Init();
-    /* Set the screen rotation */
-    MXC_TFT_SetRotation(SCREEN_ROTATE);
-    /* Change entry mode settings */
-    MXC_TFT_WriteReg(0x0011, 0x6858);
-#endif
-#ifdef BOARD_FTHR_REVA
-    camera_write_reg(0x0c, 0x56); //camera vertical flip=0
-    /* Initialize TFT display */
-    MXC_TFT_Init(MXC_SPI0, 1, NULL, NULL);
-    MXC_TFT_SetRotation(ROTATE_180);
-    MXC_TFT_SetBackGroundColor(4);
-    MXC_TFT_SetForeGroundColor(WHITE); // set font color to white
-#endif
-#endif
-
-#ifdef TS_ENABLE
-    /* Initialize Touch Screen controller */
-    MXC_TS_Init();
-    MXC_TS_Start();
-#endif
-
-    /* Display Home page */
-    state_init();
-
-#ifdef LP_MODE_ENABLE
-    /* Get ticks based on milliseconds */
-    MXC_WUT_GetTicks(500, MXC_WUT_UNIT_MILLISEC, &ticks_1);
-    MXC_WUT_GetTicks(100, MXC_WUT_UNIT_MILLISEC, &ticks_2);
-    /* Configure structure for one shot timer to trigger in a number of ticks */
-    cfg.mode = MXC_WUT_MODE_ONESHOT;
-    cfg.cmp_cnt = ticks_1;
-    /* Init WakeUp Timer */
-    MXC_WUT_Init(MXC_WUT_PRES_1);
-    /* Config WakeUp Timer */
-    MXC_WUT_Config(&cfg);
-    /* Enable Alarm wakeup by WUT */
-    MXC_LP_EnableWUTAlarmWakeup();
-    /* Enable WakeUp Timer interrupt */
-    NVIC_EnableIRQ(WUT_IRQn);
-#endif
-
-#ifndef TS_ENABLE
-    key = KEY_1;
-#endif
 
     while (1) { //TFT Demo
         /* Get current screen state */
         state = state_get_current();
-#ifdef TS_ENABLE
-        /* Check pressed touch screen key */
-        key = MXC_TS_GetKey();
-#endif
-
         if (key > 0) {
             state->prcss_key(key);
         }
