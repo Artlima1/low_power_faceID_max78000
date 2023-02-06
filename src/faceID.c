@@ -31,13 +31,13 @@
  *
  ******************************************************************************/
 #include <string.h>
+#include <stdlib.h>
 
 #include "board.h"
 #include "mxc_device.h"
 #include "mxc_delay.h"
 #include "mxc.h"
 #include "keypad.h"
-#include "state.h"
 #include "utils.h"
 #include "camera.h"
 #include "faceID.h"
@@ -45,18 +45,11 @@
 #include "embedding_process.h"
 #include "MAXCAM_Debug.h"
 #include "cnn.h"
-#ifdef BOARD_FTHR_REVA
-#include "tft_ili9341.h"
-#endif
-#ifdef BOARD_EVKIT_V1
-#include "tft_ssd2119.h"
-#include "tsc2046.h"
-#include "bitmap.h"
-#endif
+
 #include "led.h"
 #include "lp.h"
 
-#define S_MODULE_NAME "state_faceid"
+#define S_MODULE_NAME "faceID"
 
 extern uint32_t ticks_1;
 extern uint32_t ticks_2;
@@ -67,18 +60,16 @@ typedef void (*ScreenFunc)(void);
 /************************************ VARIABLES ******************************/
 volatile uint32_t cnn_time; // Stopwatch
 
-static void process_img(void);
-static void run_cnn(int x_offset, int y_offset);
-static int init(void);
-static int key_process(int key);
+void process_img(void);
+void run_cnn(int x_offset, int y_offset);
+int faceid_init(void);
 
 static int8_t prev_decision = -2;
 static int8_t decision = -2;
 
-static State g_state = { "faceID", init, key_process, NULL, 0 };
 
 /********************************* Static Functions **************************/
-static int init(void)
+int faceid_init(void)
 {
     uint32_t run_count = 0;
 
@@ -89,7 +80,7 @@ static int init(void)
     uint32_t total_time = utils_get_time_ms();
 #endif
 
-    while (1) { //Capture image and run CNN
+    while (1) {
 
         /* Check for received image */
         if (camera_is_image_rcv()) {
@@ -97,10 +88,6 @@ static int init(void)
             process_time = utils_get_time_ms();
 #endif
             process_img();
-
-#ifdef IMAGE_TO_UART
-            break;
-#endif
 
             MXC_SYS_ClockEnable(MXC_SYS_PERIPH_CLOCK_CNN); // Enable CNN clock
 
@@ -129,19 +116,19 @@ static int init(void)
             PR_INFO("Total Time : %dms", utils_get_time_ms() - total_time);
             total_time = utils_get_time_ms();
 #endif
-            /* Sleep until camera interrupt */
-            asm volatile("wfi");//MXC_LP_EnterSleepMode();
+            /* Sleep until camera interrupt 
+            asm volatile("wfi");//MXC_LP_EnterSleepMode();*/
         }
     }
 
     return 0;
 }
 
-static int key_process(int key)
+/*static int key_process(int key)
 {
     switch (key) {
     case KEY_1:
-        state_set_current(get_home_state());
+        init();
         break;
 
     default:
@@ -149,9 +136,9 @@ static int key_process(int key)
     }
 
     return 0;
-}
+}*/
 
-static void process_img(void)
+void process_img(void)
 {
     uint32_t pass_time = 0;
     uint32_t imgLen;
@@ -162,11 +149,10 @@ static void process_img(void)
     // Get the details of the image from the camera driver.
     camera_get_image(&raw, &imgLen, &w, &h);
 
-#ifdef IMAGE_TO_UART
+
     // Send the image through the UART to the console.
     // "grab_image" python program will read from the console and write to an image file.
     utils_send_img_to_pc(raw, imgLen, w, h, camera_get_pixel_format());
-#endif
 
     pass_time = utils_get_time_ms();
 
@@ -225,7 +211,7 @@ static void process_img(void)
     PR_INFO("Screen print time : %d", utils_get_time_ms() - pass_time);
 }
 
-static void run_cnn(int x_offset, int y_offset)
+void run_cnn(int x_offset, int y_offset)
 {
     uint32_t imgLen;
     uint32_t w, h;
@@ -288,8 +274,7 @@ static void run_cnn(int x_offset, int y_offset)
 
     pass_time = utils_get_time_ms();
 
-    // Disable Deep Sleep mode
-    SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
+
     // CNN interrupt wakes up CPU from sleep mode
     while (cnn_time == 0) {
         asm volatile("wfi"); // Sleep and wait for CNN interrupt
@@ -394,8 +379,4 @@ static void run_cnn(int x_offset, int y_offset)
     }
 }
 
-/********************************* Public Functions **************************/
-State *get_faceID_state(void)
-{
-    return &g_state;
-}
+

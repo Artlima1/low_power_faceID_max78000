@@ -193,7 +193,6 @@ static uint8_t img_compare(void){
     if (SAD<SAD_THRESHOLD){
         return IMG_CAP_RET_NO_CHANGE;
     }
-    utils_send_img_to_pc(raw, size, w, h, camera_get_pixel_format());
     return IMG_CAP_RET_CHANGE;
 }
 

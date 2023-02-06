@@ -65,7 +65,7 @@
 
 #include "img_capture.h"
 #include "faceID.h"
-#include "state.h"
+
 
 /***** Definitions *****/
 #define OST_CLOCK_SOURCE MXC_TMR_32K_CLK // \ref mxc_tmr_clock_t
@@ -75,9 +75,12 @@
 
 #define COMPS_PER_BASE_PIC 100
 
+#define PRINT_DEBUG
+
 /***** Globals *****/
 int timer_count = 0;
 static int blink_count = 0;
+int key = 0;
 
 __attribute__((section(
     ".shared__at__mailbox"))) volatile uint32_t mail_box[ARM_MAILBOX_SIZE + RISCV_MAILBOX_SIZE];
@@ -164,18 +167,9 @@ void fn_Compare(){
 		#endif
 	}
 	else if(decision==IMG_CAP_RET_CHANGE){
-		int key;
-		State *state;
-		key=KEY_1;
-		/* Display Home page */
-    	state_init();
-		while (1) { //TFT Demo
-        /* Get current screen state */
-        state = state_get_current();
-        if (key > 0) {
-            state->prcss_key(key);
-        }
-    }
+
+		faceid_init();
+
 		current_state = STATE_CHANGE;
 	}
 	else if(timer_count>=COMPS_PER_BASE_PIC){
@@ -201,7 +195,6 @@ void fn_Change(){
 }
 
 int main(void) {
-	
 
 	// Wait for PMIC 1.8V to become available, about 180ms after power up.
     MXC_Delay(200000);

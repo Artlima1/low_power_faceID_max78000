@@ -46,27 +46,10 @@
 #define IMAGE_READY 3
 #define RESULT_READY 4
 
-#define CAPTURE_X 70
-#define CAPTURE_Y 290
-#define SKIP_X 60
-#define SKIP_Y 290
-#define RUN_X 160
-#define RUN_Y 290
-#define BACK_X 0
-#define BACK_Y 280
 
 #define IMAGE_XRES 40 //200
 #define IMAGE_YRES 40 //150
 
-#define HEIGHT 160
-#define WIDTH 120
-#define THICKNESS 4
-#define IMAGE_H 130 //150
-#define IMAGE_W 170 //200
-#define FRAME_COLOR 0x535A
-
-#define X_START 45
-#define Y_START 30
 
 #define SAD_THRESHOLD 55000
 

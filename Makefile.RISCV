@@ -77,9 +77,8 @@ SRCS += src/img_capture.c
 SRCS += src/linked_list.c
 SRCS += src/cnn.c
 SRCS += src/embedding_process.c
-SRCS += src/state_faceid.c
-SRCS += src/state_home.c
-SRCS += src/state.c
+SRCS += src/faceID.c
+
 
 # Where to find source files for this test
 VPATH  = .

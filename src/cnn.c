@@ -56,6 +56,11 @@
 #include "cnn.h"
 #include "weights.h"
 
+
+void __attribute__((interrupt("machine")))CNN_IRQHandler(void){
+
+	CNN_ISR();
+}
 void CNN_ISR(void)
 {
     // Acknowledge interrupt to all groups
@@ -1685,7 +1690,7 @@ int cnn_enable(uint32_t clock_source, uint32_t clock_divider)
         clock_divider | clock_source;
     MXC_SYS_ClockEnable(MXC_SYS_PERIPH_CLOCK_CNN); // Enable CNN clock
 
-    MXC_NVIC_SetVector(CNN_IRQn, CNN_ISR); // Set CNN complete vector
+    //MXC_NVIC_SetVector(CNN_IRQn, CNN_ISR); // Set CNN complete vector
 
     return CNN_OK;
 }
