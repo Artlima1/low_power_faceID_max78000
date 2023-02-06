@@ -29,10 +29,11 @@ int main(void)
     MXC_SYS_ClockEnable(MXC_SYS_PERIPH_CLOCK_SMPHR); // Enable Sempahore clock
     MXC_NVIC_SetVector(RISCV_IRQn, WakeISR);         // Set wakeup ISR
 
-    MXC_SYS_ClockEnable(MXC_SYS_PERIPH_CLOCK_CPU1); // Enable RISC-V clock
-
     // DO NOT DELETE THIS LINE:
     MXC_Delay(SEC(10)); // Let debugger interrupt if needed
+    
+    MXC_SYS_ClockEnable(MXC_SYS_PERIPH_CLOCK_CPU1); // Enable RISC-V clock
+
 
     __WFI(); // Let RISC-V run
 

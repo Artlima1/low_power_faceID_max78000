@@ -59,7 +59,6 @@
 
 void __attribute__((interrupt("machine"))) CNN_IRQHandler(void)
 {
-    printf("CNN_IRQHandler\n");
     // Acknowledge interrupt to all groups
     *((volatile uint32_t*)0x50100000) &= ~((1 << 12) | 1);
     *((volatile uint32_t*)0x50500000) &= ~((1 << 12) | 1);
@@ -904,7 +903,7 @@ int cnn_start(void)
 #endif
 
     CNN_START; // Allow capture of processing time
-    
+
     return CNN_OK;
 }
 

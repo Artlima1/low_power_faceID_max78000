@@ -71,8 +71,6 @@ typedef struct {
     char * name;
 } faceID_decision_t;
 
-void process_img(void);
-void run_cnn(int x_offset, int y_offset);
-faceID_decision_t faceid_init(void);
+faceID_decision_t faceid_run(void);
 
 #endif // _FACEID_H_
