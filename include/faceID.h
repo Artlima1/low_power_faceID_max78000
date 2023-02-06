@@ -38,8 +38,6 @@
 #include <stdint.h>
 
 #define CAMERA_FREQ (10 * 1000 * 1000)
-//#define LP_MODE_ENABLE
-//#define LP_MODE 4 // 0:NO SLEEP, 1:SLEEP, 2:LPM, 3:UPM, 4:STANDBY, 5:BACKUP, 6:POWERDOWN*/
 
 #define CAPTURE_X 50
 #define CAPTURE_Y 290
@@ -50,12 +48,11 @@
 #define BACK_X 0
 #define BACK_Y 280
 
-
-#define HEIGHT 40//160
-#define WIDTH 40//120
-#define THICKNESS 4
-#define IMAGE_H 40//150
-#define IMAGE_W 40//200
+#define HEIGHT 35
+#define WIDTH 30
+#define THICKNESS 1
+#define IMAGE_H 40
+#define IMAGE_W 40
 #define FRAME_COLOR 0x535A
 
 #define X_START 0
@@ -63,14 +60,18 @@
 
 #define BYTE_PER_PIXEL 2
 
-#define LOW_LIGHT_THRESHOLD 20
+#define IMG_SHIFT_ANALYSIS 4
 
 // Data input: HWC (little data): 160x120x3
 #define DATA_SIZE_IN (160 * 120 * 3)
 
+typedef struct {
+    int8_t decision;
+    char * name;
+} faceID_decision_t;
 
 void process_img(void);
 void run_cnn(int x_offset, int y_offset);
-int faceid_init(void);
+faceID_decision_t faceid_init(void);
 
 #endif // _FACEID_H_

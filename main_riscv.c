@@ -79,7 +79,7 @@
 
 /***** Globals *****/
 int timer_count = 0;
-static int blink_count = 0;
+static int face_id_count = 0;
 int key = 0;
 
 __attribute__((section(
@@ -112,7 +112,7 @@ typedef enum {
     STATE_INIT,
     STATE_PIC1,
     STATE_COMPARE,
-	STATE_CHANGE,
+	STATE_FACEID,
     NUM_STATES
 }State_t;
 
@@ -124,7 +124,7 @@ typedef struct{
 void fn_INIT(void);
 void fn_Pic1(void);
 void fn_Compare(void);
-void fn_Change(void);
+void fn_FaceID(void);
 
 State_t current_state = STATE_INIT;
 
@@ -132,7 +132,7 @@ StateMachine_t fsm[] = {
                       {STATE_INIT, fn_INIT},
                       {STATE_PIC1, fn_Pic1},
                       {STATE_COMPARE, fn_Compare},
-                      {STATE_CHANGE, fn_Change}
+                      {STATE_FACEID, fn_FaceID}
 };
 
 void fn_INIT(){
@@ -167,31 +167,47 @@ void fn_Compare(){
 		#endif
 	}
 	else if(decision==IMG_CAP_RET_CHANGE){
-
-		faceid_init();
-
-		current_state = STATE_CHANGE;
+		LED_On(LED_BLUE);
+		current_state = STATE_FACEID;
 	}
 	else if(timer_count>=COMPS_PER_BASE_PIC){
 		current_state = STATE_PIC1;
 	}
 }
 
-void fn_Change(){
+void fn_FaceID(){
 	#ifdef PRINT_DEBUG
 	printf("MAIN: State CHANGE\n");
 	#endif
 
-	blink_count++;
-	if(blink_count>20){
-		blink_count = 0;
+	static faceID_decision_t faceID_decision;
+	faceID_decision = faceid_init();
+
+	face_id_count++;
+
+	if(faceID_decision.decision >= 0 ){
+		printf("Face %d detected, name %s\n", faceID_decision.decision, faceID_decision.name);
+		face_id_count = 0;
 		timer_count=0;
-		current_state = STATE_PIC1;
-		LED_Off(LED2);
+		current_state = STATE_COMPARE;
+		/* TODO - Do something in case face detected */
+		LED_Off(LED_BLUE);
+		LED_On(LED_GREEN);
+		MXC_Delay(30000);
+		LED_Off(LED_GREEN);
 	}
-	else{
-		LED_Toggle(LED2);
+	else {
+		if(face_id_count>5){
+			face_id_count = 0;
+			timer_count=0;
+			current_state = STATE_COMPARE;
+			LED_Off(LED_BLUE);
+			LED_On(LED_RED);
+			MXC_Delay(30000);
+			LED_Off(LED_RED);
+		}
 	}
+
 }
 
 int main(void) {
@@ -199,21 +215,25 @@ int main(void) {
 	// Wait for PMIC 1.8V to become available, about 180ms after power up.
     MXC_Delay(200000);
 
-	LED_Off(LED2);
-
     /* Enable cache */
     MXC_ICC_Enable(MXC_ICC1);
 
 	// Enable peripheral, enable CNN interrupt, turn on CNN clock
     // CNN clock: 50 MHz div 1
     cnn_enable(MXC_S_GCR_PCLKDIV_CNNCLKSEL_PCLK, MXC_S_GCR_PCLKDIV_CNNCLKDIV_DIV1);
+    cnn_boost_enable(MXC_GPIO2, MXC_GPIO_PIN_5);//Configure P2.5, turn on the CNN Boost
     cnn_init(); // Bring CNN state machine into consistent state
     cnn_load_weights(); // Load CNN kernels
     cnn_load_bias(); // Load CNN bias
     cnn_configure(); // Configure CNN state machine
+	printf("Init CNN\n");
+	/* Enable CNN Interrupt */
+	NVIC_EnableIRQ(CNN_IRQn);
+    /* Enable CNN wakeup event */
+    NVIC_EnableEVENT(CNN_IRQn);
 
 	if (init_database() < 0) {
-        PR_ERR("Could not initialize the database");
+        printf("Could not initialize the database");
         return -1;
     }
 

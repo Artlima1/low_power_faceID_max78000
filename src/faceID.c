@@ -50,6 +50,7 @@
 #include "lp.h"
 
 #define S_MODULE_NAME "faceID"
+#define PRINT_TIME 1
 
 extern uint32_t ticks_1;
 extern uint32_t ticks_2;
@@ -62,81 +63,69 @@ volatile uint32_t cnn_time; // Stopwatch
 
 void process_img(void);
 void run_cnn(int x_offset, int y_offset);
-int faceid_init(void);
+faceID_decision_t faceid_init(void);
 
 static int8_t prev_decision = -2;
 static int8_t decision = -2;
-
+static char * name;
 
 /********************************* Static Functions **************************/
-int faceid_init(void)
+faceID_decision_t faceid_init(void)
 {
+    faceID_decision_t ret;
     uint32_t run_count = 0;
 
-#define PRINT_TIME 1
 #if (PRINT_TIME == 1)
     /* Get current time */
     uint32_t process_time = utils_get_time_ms();
     uint32_t total_time = utils_get_time_ms();
 #endif
 
-    while (1) {
+    camera_start_capture_image();
 
-        /* Check for received image */
-        if (camera_is_image_rcv()) {
-#if (PRINT_TIME == 1)
-            process_time = utils_get_time_ms();
-#endif
-            process_img();
-
-            MXC_SYS_ClockEnable(MXC_SYS_PERIPH_CLOCK_CNN); // Enable CNN clock
-
-            /* Run CNN three times on original and shifted images */
-            run_cnn(0, 0);
-
-            if ((run_count % 2) == 0) {
-                run_cnn(-10, -10);
-                run_cnn(10, 10);
-            } else {
-                run_cnn(-10, 10);
-                run_cnn(10, -10);
-            }
-
-            run_count++;
+    /* Wait for for received image */
+    printf("Waiting for img...\n");
+    while(!camera_is_image_rcv());
+    printf("img recv\n");
 
 #if (PRINT_TIME == 1)
-
-            printf("\n\n\n");
-            PR_INFO("Process Time Total : %dms", utils_get_time_ms() - process_time);
+    process_time = utils_get_time_ms();
 #endif
+    process_img();
 
+    MXC_SYS_ClockEnable(MXC_SYS_PERIPH_CLOCK_CNN); // Enable CNN clock
 
-#if (PRINT_TIME == 1)
-            PR_INFO("Capture Time : %dms", process_time - total_time);
-            PR_INFO("Total Time : %dms", utils_get_time_ms() - total_time);
-            total_time = utils_get_time_ms();
-#endif
-            /* Sleep until camera interrupt 
-            asm volatile("wfi");//MXC_LP_EnterSleepMode();*/
-        }
+    /* Run CNN three times on original and shifted images */
+    run_cnn(0, 0);
+
+    if ((run_count % 2) == 0) {
+        run_cnn(-IMG_SHIFT_ANALYSIS, -IMG_SHIFT_ANALYSIS);
+        run_cnn(IMG_SHIFT_ANALYSIS, IMG_SHIFT_ANALYSIS);
+    } else {
+        run_cnn(-IMG_SHIFT_ANALYSIS, IMG_SHIFT_ANALYSIS);
+        run_cnn(IMG_SHIFT_ANALYSIS, -IMG_SHIFT_ANALYSIS);
     }
 
-    return 0;
+    run_count++;
+
+#if (PRINT_TIME == 1)
+
+    printf("\n\n\n");
+    printf("Process Time Total : %dms\n", utils_get_time_ms() - process_time);
+#endif
+
+
+#if (PRINT_TIME == 1)
+    printf("Capture Time : %dms\n", process_time - total_time);
+    printf("Total Time : %dms\n", utils_get_time_ms() - total_time);
+    total_time = utils_get_time_ms();
+#endif
+
+    ret.decision = decision;
+    ret.name = name;
+
+    return ret;
 }
-
-/*static int key_process(int key)
-{
-    switch (key) {
-    case KEY_1:
-        init();
-        break;
-
-    default:
-        break;
-    }
-
-    return 0;
-}*/
 
 void process_img(void)
 {
@@ -148,11 +137,6 @@ void process_img(void)
 
     // Get the details of the image from the camera driver.
     camera_get_image(&raw, &imgLen, &w, &h);
-
-
-    // Send the image through the UART to the console.
-    // "grab_image" python program will read from the console and write to an image file.
-    utils_send_img_to_pc(raw, imgLen, w, h, camera_get_pixel_format());
 
     pass_time = utils_get_time_ms();
 
@@ -204,11 +188,7 @@ void process_img(void)
         image += ((IMAGE_W - (HEIGHT + 2 * THICKNESS)) / 2);
     }
 
-    PR_INFO("Frame drawing time : %d", utils_get_time_ms() - pass_time);
-
-    pass_time = utils_get_time_ms();
-
-    PR_INFO("Screen print time : %d", utils_get_time_ms() - pass_time);
+    printf("Frame drawing time : %d\n", utils_get_time_ms() - pass_time);
 }
 
 void run_cnn(int x_offset, int y_offset)
@@ -227,16 +207,18 @@ void run_cnn(int x_offset, int y_offset)
 
     // Enable CNN clock
     MXC_SYS_ClockEnable(MXC_SYS_PERIPH_CLOCK_CNN);
+    
+    if (!cnn_start()) {
+        printf("ERROR: Starting CNN! \n");
+        while(1);
+    }
 
-    cnn_start();
-
-    PR_INFO("CNN initialization time : %d", utils_get_time_ms() - pass_time);
+    printf("CNN initialization time : %d\n", utils_get_time_ms() - pass_time);
 
     uint8_t *data = raw;
 
     pass_time = utils_get_time_ms();
 
-    //LED_On(1); // red LED
     for (int i = y_offset; i < HEIGHT + y_offset; i++) {
         data = raw + ((IMAGE_H - (WIDTH)) / 2) * IMAGE_W * BYTE_PER_PIXEL;
         data += (((IMAGE_W - (HEIGHT)) / 2) + i) * BYTE_PER_PIXEL;
@@ -260,27 +242,22 @@ void run_cnn(int x_offset, int y_offset)
             // Wait for FIFO 0
 
             number = 0x00FFFFFF & ((((uint8_t)b) << 16) | (((uint8_t)g) << 8) | ((uint8_t)r));
-
             *((volatile uint32_t *)0x50000008) = number; // Write FIFO 0
         }
     }
 
-    //LED_Off(1);
-
     int cnn_load_time = utils_get_time_ms() - pass_time;
 
-    PR_DEBUG("CNN load data time : %d", cnn_load_time);
-
+    printf("CNN load data time : %d\n", cnn_load_time);
 
     pass_time = utils_get_time_ms();
 
-
     // CNN interrupt wakes up CPU from sleep mode
-    while (cnn_time == 0) {
+    /*while (cnn_time == 0) {
         asm volatile("wfi"); // Sleep and wait for CNN interrupt
     }
 
-    PR_INFO("CNN wait time : %d", utils_get_time_ms() - pass_time);
+    printf("CNN wait time : %d\n", utils_get_time_ms() - pass_time);*/
 
     pass_time = utils_get_time_ms();
 
@@ -291,14 +268,14 @@ void run_cnn(int x_offset, int y_offset)
     // Disable CNN clock to save power
     MXC_SYS_ClockDisable(MXC_SYS_PERIPH_CLOCK_CNN);
 
-    PR_INFO("CNN unload time : %d", utils_get_time_ms() - pass_time);
+    printf("CNN unload time : %d\n", utils_get_time_ms() - pass_time);
 
     pass_time = utils_get_time_ms();
 
     int pResult = calculate_minDistance((uint8_t *)(raw));
 
-    PR_INFO("Embedding time : %d", utils_get_time_ms() - pass_time);
-    PR_INFO("Result = %d \n", pResult);
+    printf("Embedding time : %d\n", utils_get_time_ms() - pass_time);
+    printf("Result = %d \n", pResult);
 
     if (pResult == 0) {
         char *name;
@@ -311,37 +288,36 @@ void run_cnn(int x_offset, int y_offset)
         prev_decision = decision;
         decision = -5;
 
-        PR_INFO("counter_len: %d,  %d,%d,%d\n", counter_len, counter[0], counter[1], counter[2]);
-#if 1
+        printf("counter_len: %d,  %d,%d,%d\n", counter_len, counter[0], counter[1], counter[2]);
 
         for (uint8_t id = 0; id < counter_len; ++id) {
             if (counter[id] >= (uint8_t)(closest_sub_buffer_size * 0.8)) { // >80%  detection
                 name = get_subject(id);
                 decision = id;
                 noface_count = 0;
-                PR_DEBUG("Status: %s \n", name);
-                PR_INFO("Detection: %s: %d", name, counter[id]);
+                printf("Status: %s \n", name);
+                printf("Detection: %s: %d\n", name, counter[id]);
                 break;
             } else if (counter[id] >= (uint8_t)(closest_sub_buffer_size * 0.4)) { // >%40 adjust
                 name = "Adjust Face";
                 decision = -2;
                 noface_count = 0;
-                PR_DEBUG("Status: %s \n", name);
-                PR_INFO("Detection: %s: %d", name, counter[id]);
+                printf("Status: %s \n", name);
+                printf("Detection: %s: %d\n", name, counter[id]);
                 break;
             } else if (counter[id] > closest_sub_buffer_size * 0.2) { //>>20% unknown
                 name = "Unknown";
                 decision = -1;
                 noface_count = 0;
-                PR_DEBUG("Status: %s \n", name);
-                PR_INFO("Detection: %s: %d", name, counter[id]);
+                printf("Status: %s \n", name);
+                printf("Detection: %s: %d\n", name, counter[id]);
                 break;
             } else if (counter[id] > closest_sub_buffer_size * 0.1) { //>> 10% transition
                 name = "";
                 decision = -3;
                 noface_count = 0;
-                PR_DEBUG("Status: %s \n", name);
-                PR_INFO("Detection: %s: %d", name, counter[id]);
+                printf("Status: %s \n", name);
+                printf("Detection: %s: %d\n", name, counter[id]);
             } else {
                 noface_count++;
 
@@ -349,33 +325,12 @@ void run_cnn(int x_offset, int y_offset)
                     name = "No face";
                     decision = -4;
                     noface_count--;
-                    PR_INFO("Detection: %s: %d", name, counter[id]);
+                    printf("Detection: %s: %d\n", name, counter[id]);
                 }
             }
         }
 
-#else
-
-        for (uint8_t id = 0; id < counter_len; ++id) {
-            if (counter[id] >= (closest_sub_buffer_size - 4)) {
-                name = get_subject(id);
-                decision = id;
-                break;
-            } else if (counter[id] >= (closest_sub_buffer_size / 2 + 1)) {
-                name = "Adjust Face";
-                decision = -2;
-                break;
-            } else if (counter[id] > 4) {
-                name = "Unknown";
-                decision = -1;
-                break;
-            }
-        }
-
-#endif
-
-        PR_DEBUG("Decision: %d Name:%s \n", decision, name);
-
+        printf("Decision: %d Name:%s \n", decision, name);
     }
 }
 

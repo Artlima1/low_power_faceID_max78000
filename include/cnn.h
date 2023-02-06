@@ -47,6 +47,7 @@ typedef int16_t q15_t;
 #define CNN_FAIL 0
 #define CNN_OK 1
 
+
 /*
   SUMMARY OF OPS
   Hardware: 56,295,040 ops (55,234,560 macc; 1,052,800 comp; 7,680 add; 0 mul; 0 bitwise)
