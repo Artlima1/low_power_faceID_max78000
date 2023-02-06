@@ -61,6 +61,7 @@
 #define BYTE_PER_PIXEL 2
 
 #define IMG_SHIFT_ANALYSIS 4
+#define FAST_FIFO           // if defined, it uses fast fifo instead of fifo
 
 // Data input: HWC (little data): 160x120x3
 #define DATA_SIZE_IN (160 * 120 * 3)

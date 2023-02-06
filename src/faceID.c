@@ -75,11 +75,29 @@ faceID_decision_t faceid_init(void)
     faceID_decision_t ret;
     uint32_t run_count = 0;
 
-#if (PRINT_TIME == 1)
+    // Enable peripheral, enable CNN interrupt, turn on CNN clock
+    // CNN clock: 50 MHz div 1
+    cnn_enable(MXC_S_GCR_PCLKDIV_CNNCLKSEL_PCLK, MXC_S_GCR_PCLKDIV_CNNCLKDIV_DIV1);
+    cnn_boost_enable(MXC_GPIO2, MXC_GPIO_PIN_5);//Configure P2.5, turn on the CNN Boost
+    cnn_init(); // Bring CNN state machine into consistent state
+    cnn_load_weights(); // Load CNN kernels
+    cnn_load_bias(); // Load CNN bias
+    cnn_configure(); // Configure CNN state machine
+	printf("Init CNN\n");
+    __enable_irq();
+	/* Enable CNN Interrupt */
+	NVIC_EnableIRQ(CNN_IRQn);
+    /* Enable CNN wakeup event */
+    NVIC_EnableEVENT(CNN_IRQn);
+
+	if (init_database() < 0) {
+        printf("Could not initialize the database");
+        return;
+    }
+
     /* Get current time */
     uint32_t process_time = utils_get_time_ms();
     uint32_t total_time = utils_get_time_ms();
-#endif
 
     camera_start_capture_image();
 
@@ -88,38 +106,26 @@ faceID_decision_t faceid_init(void)
     while(!camera_is_image_rcv());
     printf("img recv\n");
 
-#if (PRINT_TIME == 1)
     process_time = utils_get_time_ms();
-#endif
     process_img();
-
-    MXC_SYS_ClockEnable(MXC_SYS_PERIPH_CLOCK_CNN); // Enable CNN clock
 
     /* Run CNN three times on original and shifted images */
     run_cnn(0, 0);
 
-    if ((run_count % 2) == 0) {
+/*     if ((run_count % 2) == 0) {
         run_cnn(-IMG_SHIFT_ANALYSIS, -IMG_SHIFT_ANALYSIS);
         run_cnn(IMG_SHIFT_ANALYSIS, IMG_SHIFT_ANALYSIS);
     } else {
         run_cnn(-IMG_SHIFT_ANALYSIS, IMG_SHIFT_ANALYSIS);
         run_cnn(IMG_SHIFT_ANALYSIS, -IMG_SHIFT_ANALYSIS);
     }
-
     run_count++;
+*/
 
-#if (PRINT_TIME == 1)
-
-    printf("\n\n\n");
     printf("Process Time Total : %dms\n", utils_get_time_ms() - process_time);
-#endif
-
-
-#if (PRINT_TIME == 1)
     printf("Capture Time : %dms\n", process_time - total_time);
     printf("Total Time : %dms\n", utils_get_time_ms() - total_time);
     total_time = utils_get_time_ms();
-#endif
 
     ret.decision = decision;
     ret.name = name;
@@ -202,23 +208,14 @@ void run_cnn(int x_offset, int y_offset)
 
     // Get the details of the image from the camera driver.
     camera_get_image(&raw, &imgLen, &w, &h);
-
-    pass_time = utils_get_time_ms();
-
-    // Enable CNN clock
-    MXC_SYS_ClockEnable(MXC_SYS_PERIPH_CLOCK_CNN);
-    
-    if (!cnn_start()) {
-        printf("ERROR: Starting CNN! \n");
-        while(1);
-    }
-
-    printf("CNN initialization time : %d\n", utils_get_time_ms() - pass_time);
-
     uint8_t *data = raw;
 
     pass_time = utils_get_time_ms();
+    cnn_start();
+    int cnn_start_time = utils_get_time_ms() - pass_time;
+    printf("CNN start time: %d\n", cnn_start_time);
 
+    pass_time = utils_get_time_ms();
     for (int i = y_offset; i < HEIGHT + y_offset; i++) {
         data = raw + ((IMAGE_H - (WIDTH)) / 2) * IMAGE_W * BYTE_PER_PIXEL;
         data += (((IMAGE_W - (HEIGHT)) / 2) + i) * BYTE_PER_PIXEL;
@@ -237,27 +234,35 @@ void run_cnn(int x_offset, int y_offset)
             g = ug - 128;
             r = ur - 128;
 
+#ifndef FAST_FIFO
             // Loading data into the CNN fifo
-            while (((*((volatile uint32_t *)0x50000004) & 1)) != 0) {}
-            // Wait for FIFO 0
+            while (((*((volatile uint32_t*)0x50000004) & 1)) != 0)
+                ; // Wait for FIFO 0
 
             number = 0x00FFFFFF & ((((uint8_t)b) << 16) | (((uint8_t)g) << 8) | ((uint8_t)r));
-            *((volatile uint32_t *)0x50000008) = number; // Write FIFO 0
+            *((volatile uint32_t*)0x50000008) = number; // Write FIFO 0
+#else
+
+            // Loading data into the CNN fifo
+            while (((*((volatile uint32_t*)0x400c0404) & 2)) != 0)
+                ; // Wait for FIFO 0
+
+            number = 0x00FFFFFF & ((((uint8_t)b) << 16) | (((uint8_t)g) << 8) | ((uint8_t)r));
+            *((volatile uint32_t*)0x400c0410) = number; // Write FIFO 0
+#endif
         }
     }
 
     int cnn_load_time = utils_get_time_ms() - pass_time;
-
     printf("CNN load data time : %d\n", cnn_load_time);
 
-    pass_time = utils_get_time_ms();
-
     // CNN interrupt wakes up CPU from sleep mode
-    /*while (cnn_time == 0) {
+    pass_time = utils_get_time_ms();
+    while (cnn_time == 0) {
         asm volatile("wfi"); // Sleep and wait for CNN interrupt
     }
 
-    printf("CNN wait time : %d\n", utils_get_time_ms() - pass_time);*/
+    printf("CNN wait time : %d\n", utils_get_time_ms() - pass_time);
 
     pass_time = utils_get_time_ms();
 

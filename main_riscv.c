@@ -218,24 +218,22 @@ int main(void) {
     /* Enable cache */
     MXC_ICC_Enable(MXC_ICC1);
 
-	// Enable peripheral, enable CNN interrupt, turn on CNN clock
-    // CNN clock: 50 MHz div 1
+	/* Enable peripheral, enable CNN interrupt, turn on CNN clock */
+    /* CNN clock: 50 MHz div 1 */
     cnn_enable(MXC_S_GCR_PCLKDIV_CNNCLKSEL_PCLK, MXC_S_GCR_PCLKDIV_CNNCLKDIV_DIV1);
-    cnn_boost_enable(MXC_GPIO2, MXC_GPIO_PIN_5);//Configure P2.5, turn on the CNN Boost
-    cnn_init(); // Bring CNN state machine into consistent state
-    cnn_load_weights(); // Load CNN kernels
-    cnn_load_bias(); // Load CNN bias
-    cnn_configure(); // Configure CNN state machine
-	printf("Init CNN\n");
-	/* Enable CNN Interrupt */
-	NVIC_EnableIRQ(CNN_IRQn);
+    /* Configure P2.5, turn on the CNN Boost */
+    cnn_boost_enable(MXC_GPIO2, MXC_GPIO_PIN_5);
+    /* Bring state machine into consistent state */
+    cnn_init();
+    /* Load kernels */
+    cnn_load_weights();
+    /* Configure state machine */
+    cnn_configure();
+    printf("Init CNN");
+    /* Enable CNN interrupt */
+    NVIC_EnableIRQ(CNN_IRQn);
     /* Enable CNN wakeup event */
     NVIC_EnableEVENT(CNN_IRQn);
-
-	if (init_database() < 0) {
-        printf("Could not initialize the database");
-        return -1;
-    }
 
     /* Initialize RTC */
     MXC_RTC_Init(0, 0);
@@ -260,6 +258,8 @@ int main(void) {
 	MXC_TMR_EnableWakeup(OST_TIMER, &tmr);
 	NVIC_EnableIRQ(TMR1_IRQn);
 
+
+	__enable_irq();
 	/* Enable PCIF wakeup event */
     NVIC_EnableEVENT(PCIF_IRQn);
     /* Enable wakeup timer interrupt */
@@ -267,7 +267,7 @@ int main(void) {
     /* Enable wakeup timer event */
     NVIC_EnableEVENT(WUT_IRQn);
 
-	__enable_irq();
+	
 
 	img_capture_init();
 	
