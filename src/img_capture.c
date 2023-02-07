@@ -61,6 +61,7 @@
 
 #define IMG_SIZE IMAGE_XRES*IMAGE_YRES*2
 
+#define PRINT_DEBUG
 /********************************** Type Defines  *****************************/
 
 typedef struct {
@@ -107,6 +108,8 @@ uint8_t img_capture(uint8_t capture_mode) {
     return ret;
 }
 
+
+
 static uint8_t store_img(uint8_t img_type){
     uint8_t *raw;
     uint32_t size, w, h;
@@ -140,7 +143,6 @@ static uint8_t img_compare(void){
     // Get the details of the image from the camera driver.
     camera_get_image(&raw, &size, &w, &h);
     uint16_t * comp_img = (uint16_t * ) raw;
-
 
     uint32_t SAD=0, i;
     // uint32_t MSE=0;
@@ -265,5 +267,16 @@ void img_capture_init(void) {
     camera_write_reg(0x0c, 0x56); //camera vertical flip=0
 
     base_img = list_create();
+
+}
+
+void change_img_size_to_compare(void)
+{
+	int ret_c=0;
+
+	    ret_c=camera_set_frame_info(IMAGE_XRES, IMAGE_YRES, PIXFORMAT_RGB565);
+	    while (ret_c != STATUS_OK) {
+	            printf("IMG_CAP: Error returned from reading set frame info. Error %d\n", ret_c);
+	        };
 
 }

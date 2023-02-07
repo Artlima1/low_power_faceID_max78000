@@ -48,15 +48,15 @@
 #define BACK_X 0
 #define BACK_Y 280
 
-#define HEIGHT 35
-#define WIDTH 30
-#define THICKNESS 1
-#define IMAGE_H 40
-#define IMAGE_W 40
+#define HEIGHT 160
+#define WIDTH 120
+#define THICKNESS 4
+#define IMAGE_H 150
+#define IMAGE_W 200
 #define FRAME_COLOR 0x535A
 
-#define X_START 0
-#define Y_START 0
+#define X_START 45
+#define Y_START 30
 
 #define BYTE_PER_PIXEL 2
 

@@ -74,8 +74,14 @@ faceID_decision_t faceid_run(void)
 {
     faceID_decision_t ret;
     uint32_t run_count = 0;
+    int ret_c=0;
 
     initialize_cnn();
+
+    ret_c= camera_set_frame_info(200, 150, PIXFORMAT_RGB565);
+    while (ret_c != STATUS_OK) {
+            printf("IMG_CAP: Error returned from reading set frame info. Error %d\n", ret_c);
+        };
 
     camera_start_capture_image();
     while (!camera_is_image_rcv())
@@ -339,3 +345,5 @@ static void initialize_cnn(void)
         return;
     }
 }
+
+

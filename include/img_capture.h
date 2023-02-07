@@ -36,6 +36,7 @@
 #ifndef _IMG_CAPTURE_H_
 #define _IMG_CAPTURE_H_
 
+
 #define CAMERA_FREQ (10 * 1000 * 1000)
 // Mailboxes
 #define ARM_MAILBOX_SIZE 1
@@ -67,5 +68,6 @@ enum {
 
 uint8_t img_capture(uint8_t capture_mode);
 void img_capture_init(void);
+void change_img_size_to_compare(void);
 
 #endif // _IMG_CAPTURE_H_

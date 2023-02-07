@@ -99,7 +99,6 @@ void fn_INIT(){
 	#ifdef PRINT_DEBUG
 	printf("MAIN: State INIT\n");
 	#endif
-	
 	current_state = STATE_PIC1;
 }
 
@@ -138,6 +137,7 @@ void fn_Compare(){
 void fn_FaceID(){
 	#ifdef PRINT_DEBUG
 	printf("MAIN: State CHANGE\n");
+	printf("%d time face detection\n",face_id_count);
 	#endif
 
 	static faceID_decision_t faceID_decision;
@@ -150,21 +150,32 @@ void fn_FaceID(){
 		face_id_count = 0;
 		timer_count=0;
 		current_state = STATE_COMPARE;
-		/* TODO - Do something in case face detected */
+		/* TODO - Do something in case face detected*/
 		LED_Off(LED_BLUE);
 		LED_On(LED_GREEN);
 		MXC_Delay(30000);
 		LED_Off(LED_GREEN);
+		change_img_size_to_compare();
 	}
 	else {
-		if(face_id_count>5){
+		if(face_id_count>3){
+			printf("There's no face detected,changing back to comparing \n");
 			face_id_count = 0;
+			printf("i'm stuck here 1");
 			timer_count=0;
+			printf("i'm stuck here 2");
 			current_state = STATE_COMPARE;
+			printf("i'm stuck here 3");
 			LED_Off(LED_BLUE);
+			printf("i'm stuck here 4");
 			LED_On(LED_RED);
+			printf("i'm stuck here 5");
 			MXC_Delay(30000);
+			printf("i'm stuck here 6");
 			LED_Off(LED_RED);
+			printf("i'm stuck here 7");
+			change_img_size_to_compare();
+			printf("i'm stuck here 8");
 		}
 	}
 
