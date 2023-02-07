@@ -58,7 +58,8 @@ typedef enum {
     STATE_INIT,
     STATE_PIC1,
     STATE_COMPARE,
-	STATE_CHANGE,
+	STATE_FACEID,
+	STATE_RECOGNIZED,
     NUM_STATES
 }State_t;
 
@@ -67,27 +68,30 @@ typedef struct{
     void (*state_function)(void);
 } StateMachine_t;
 
-void fn_INIT(void);
+void fn_Init(void);
 void fn_Pic1(void);
 void fn_Compare(void);
-void fn_Change(void);
+void fn_FaceID(void);
+void fn_Recgnized(void);
 
 State_t current_state = STATE_INIT;
 
 StateMachine_t fsm[] = {
-                      {STATE_INIT, fn_INIT},
+                      {STATE_INIT, fn_Init},
                       {STATE_PIC1, fn_Pic1},
                       {STATE_COMPARE, fn_Compare},
-                      {STATE_CHANGE, fn_Change}
+                      {STATE_FACEID, fn_FaceID},
+					  {STATE_RECOGNIZED, fn_Recgnized}
 };
 
-void fn_INIT(){
+void fn_Init(){
 	LED_On(LED_RED);
 	#ifdef PRINT_DEBUG
 	printf("MAIN: State INIT\n");
 	#endif
 
 	img_capture_init();
+	image_capture_set_img_res(IMG_RES_COMPARE);
 	esp32_init();
 
 	/* Camera need some exposition time after init */
@@ -122,18 +126,25 @@ void fn_Compare(){
 		#endif
 	}
 	else if(decision==IMG_CAP_RET_CHANGE){
-		current_state = STATE_CHANGE;
+		image_capture_set_img_res(IMG_RES_FACEID);
+		current_state = STATE_FACEID;
 		LED_Off(LED_GREEN);
 		LED_On(LED_BLUE);
 	}
 	else if(timer_count>=COMPS_PER_BASE_PIC){
 		current_state = STATE_PIC1;
+		LED_Off(LED_GREEN);
+		LED_On(LED_RED);
 	}
 }
 
-void fn_Change(){
+void fn_FaceID(){
+	/* TODO */
+}
+
+void fn_Recgnized(){
 	#ifdef PRINT_DEBUG
-	printf("MAIN: State CHANGE\n");
+	printf("MAIN: Face RECOGNIZED\n");
 	#endif
 	img_capture_send_img();
 	MXC_Delay(SEC(1));

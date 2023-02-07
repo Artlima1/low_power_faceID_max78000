@@ -27,8 +27,8 @@
 #define GREEN_OFFSET 5
 #define BLUE_MASK 0x1F /* 0000 0000 0001 1111 */
 
-#define BLOCKS_X (IMAGE_XRES / BLOCK_PIXEL_W)
-#define BLOCKS_Y (IMAGE_YRES / BLOCK_PIXEL_H)
+#define BLOCKS_X (IMG_X_RES_CMP / BLOCK_PIXEL_W)
+#define BLOCKS_Y (IMG_Y_RES_CMP / BLOCK_PIXEL_H)
 #define BLOCKS_IN_CLUSTER (BLOCKS_X * BLOCKS_Y)
 
 #define RGB_PIXEL_SIZE sizeof(rgb_t)
@@ -39,6 +39,7 @@
 /************************************ VARIABLES ******************************/
 
 rgb_t base_img[CLUSTER_SIZE];
+int dma_channel;
 
 /************************************ Static Functions Declarations ******************************/
 static uint8_t take_base();
@@ -84,7 +85,6 @@ void img_capture_init(void)
     int ret = 0;
     int slaveAddress;
     int id;
-    int dma_channel;
 
     // Initialize DMA for camera interface
     MXC_DMA_Init();
@@ -138,9 +138,6 @@ void img_capture_init(void)
     printf("IMG_CAP: Camera Manufacture ID is %04x\n", id);
 #endif
 
-    // Setup the camera image dimensions, pixel format and data acquiring details.
-    ret = camera_setup(IMAGE_XRES, IMAGE_YRES, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel);
-
     if (ret != STATUS_OK)
     {
 #ifdef PRINT_DEBUG
@@ -160,6 +157,32 @@ void img_capture_send_img(void){
     camera_get_image(&raw, &size, &w, &h);
 
     esp32_send_img(raw, size, w, h, PIXFORMAT_RGB565);
+}
+
+uint8_t image_capture_set_img_res(uint8_t img_res_type) {
+    uint8_t ret = IMG_CAP_RET_ERROR;
+
+    switch (img_res_type)
+    {
+    case IMG_RES_COMPARE: {
+        camera_reset();
+        if(camera_setup(IMG_X_RES_CMP, IMG_Y_RES_CMP, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel) == STATUS_OK){
+            ret = IMG_CAP_RET_SUCCESS;
+        }
+        break;
+    }
+    case IMG_RES_FACEID: {
+        camera_reset();
+        if(camera_setup(IMG_X_RES_FACEID, IMG_Y_RES_FACEID, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel) == STATUS_OK){
+            ret = IMG_CAP_RET_SUCCESS;
+        }
+        break;
+    }
+    default:
+        break;
+    }
+
+    return ret;
 }
 
 /************************************ Static Functions ******************************/
