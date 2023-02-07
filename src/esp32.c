@@ -37,7 +37,7 @@ void esp32_send_img(uint8_t *img, uint32_t imgLen, uint16_t w, uint16_t h, uint8
     /* Send image row by row */
     uint16_t i;
     for(i=0; i<h; i++){
-        memcpy(tx_buff, &img[i*w], w);
+        memcpy(tx_buff, &img[i*(w*2)], w*2);
         send_buff(w);
     }
 }
