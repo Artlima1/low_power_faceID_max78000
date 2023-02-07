@@ -272,11 +272,72 @@ void img_capture_init(void) {
 
 void change_img_size_to_compare(void)
 {
-	int ret_c=0;
+	camera_reset();
+    int ret = 0;
+    int slaveAddress;
+    int id;
+    int dma_channel;
 
-	    ret_c=camera_set_frame_info(IMAGE_XRES, IMAGE_YRES, PIXFORMAT_RGB565);
-	    while (ret_c != STATUS_OK) {
-	            printf("IMG_CAP: Error returned from reading set frame info. Error %d\n", ret_c);
-	        };
+    // Initialize DMA for camera interface
+    MXC_DMA_Init();
+    dma_channel = MXC_DMA_AcquireChannel();
+
+    /* Enable camera power */
+    Camera_Power(POWER_ON);
+    MXC_Delay(300000);
+
+    // Initialize the camera driver.
+    camera_init(CAMERA_FREQ);
+
+    #ifdef PRINT_DEBUG
+    printf("IMG_CAP: Init Camera");
+    #endif
+
+    // Obtain the I2C slave address of the camera.
+    slaveAddress = camera_get_slave_address();
+
+    #ifdef PRINT_DEBUG
+    printf("IMG_CAP: Camera I2C slave address is %02x\n", slaveAddress);
+    #endif
+
+    // Obtain the product ID of the camera.
+    ret = camera_get_product_id(&id);
+
+    if (ret != STATUS_OK) {
+        #ifdef PRINT_DEBUG
+        printf("IMG_CAP: Error returned from reading camera id. Error %d\n", ret);
+        #endif
+        return;
+    }
+
+    #ifdef PRINT_DEBUG
+    printf("IMG_CAP: Camera Product ID is %04x\n", id);
+    #endif
+
+    // Obtain the manufacture ID of the camera.
+    ret = camera_get_manufacture_id(&id);
+
+    if (ret != STATUS_OK) {
+        #ifdef PRINT_DEBUG
+        printf("IMG_CAP: Error returned from reading camera id. Error %d\n", ret);
+        #endif
+        return;
+    }
+
+    #ifdef PRINT_DEBUG
+    printf("IMG_CAP: Camera Manufacture ID is %04x\n", id);
+    #endif
+
+    // Setup the camera image dimensions, pixel format and data acquiring details.
+    ret = camera_setup(IMAGE_XRES, IMAGE_YRES, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel);
+
+    if (ret != STATUS_OK) {
+        #ifdef PRINT_DEBUG
+        printf("IMG_CAP: Error returned from setting up camera. Error %d\n", ret);
+        #endif
+        return;
+    }
+
+    camera_write_reg(0x0c, 0x56); //camera vertical flip=0
 
 }
