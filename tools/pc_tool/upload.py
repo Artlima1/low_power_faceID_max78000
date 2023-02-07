@@ -12,5 +12,5 @@ def upload_to_firebase(fileName):
     # Opt : if you want to make public access from the URL
     blob.make_public()
 
-    print("your file url", blob.public_url)
+    print("Your file url", blob.public_url)
 
