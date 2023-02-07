@@ -17,6 +17,7 @@
 #include "gcfr_regs.h"
 #include "led.h"
 #include "mxc_delay.h"
+#include "esp32.h"
 
 #define S_MODULE_NAME "MAIN-RISCV"
 #define PRINT_DEBUG
@@ -31,7 +32,6 @@
 
 /***** Globals *****/
 int timer_count = 0;
-static int blink_count = 0;
 
 void __attribute__((interrupt("machine")))TMR1_IRQHandler(void) {
     // Clear interrupt
@@ -82,11 +82,13 @@ StateMachine_t fsm[] = {
 };
 
 void fn_INIT(){
+	LED_On(LED_RED);
 	#ifdef PRINT_DEBUG
 	printf("MAIN: State INIT\n");
 	#endif
 
 	img_capture_init();
+	esp32_init();
 
 	/* Camera need some exposition time after init */
 	MXC_Delay(SEC(2));
@@ -103,11 +105,13 @@ void fn_Pic1(){
 	timer_count=0;
 
 	current_state = STATE_COMPARE;
+	LED_Off(LED_RED);
+	LED_On(LED_GREEN);
 }
 
 void fn_Compare(){
 	#ifdef PRINT_DEBUG
-	printf("MAIN: State COMPARE: ");
+	printf("MAIN: State COMPARE\n");
 	#endif
 	
 	uint8_t decision = img_capture(IMAGE_CAPTURE_COMPARE);
@@ -119,6 +123,8 @@ void fn_Compare(){
 	}
 	else if(decision==IMG_CAP_RET_CHANGE){
 		current_state = STATE_CHANGE;
+		LED_Off(LED_GREEN);
+		LED_On(LED_BLUE);
 	}
 	else if(timer_count>=COMPS_PER_BASE_PIC){
 		current_state = STATE_PIC1;
@@ -129,22 +135,15 @@ void fn_Change(){
 	#ifdef PRINT_DEBUG
 	printf("MAIN: State CHANGE\n");
 	#endif
+	img_capture_send_img();
+	MXC_Delay(SEC(1));
 
-	blink_count++;
-	if(blink_count>50){
-		blink_count = 0;
-		timer_count=0;
-		current_state = STATE_COMPARE;
-		LED_Off(LED2);
-	}
-	else{
-		LED_Toggle(LED2);
-	}
+	LED_Off(LED_BLUE);
+	LED_On(LED_GREEN);
+	current_state = STATE_COMPARE;
 }
 
 int main(void) {
-
-	LED_Off(LED2);
 
     /* Enable cache */
     MXC_ICC_Enable(MXC_ICC1);

@@ -15,8 +15,6 @@
 #define SAD_THRESHOLD 60000
 #define MIN_BLOCK_DIF 4000
 
-#define SEND_UART
-
 enum {
     IMAGE_CAPTURE_BASE,
     IMAGE_CAPTURE_COMPARE
@@ -37,6 +35,7 @@ typedef struct
 } rgb_t;
 
 uint8_t img_capture(uint8_t capture_mode);
+void img_capture_send_img(void);
 void img_capture_init(void);
 
 #endif // _IMG_CAPTURE_H_

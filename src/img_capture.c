@@ -12,6 +12,7 @@
 #include "utils.h"
 #include "dma.h"
 #include "icc.h"
+#include "esp32.h"
 
 #define S_MODULE_NAME "img_capture"
 // #define PRINT_DEBUG
@@ -39,7 +40,7 @@
 
 rgb_t base_img[CLUSTER_SIZE];
 
-/************************************ Local Functions Declarations ******************************/
+/************************************ Static Functions Declarations ******************************/
 static uint8_t take_base();
 static uint8_t img_compare(void);
 static void clusterize_image(uint16_t * img, rgb_t * dest);
@@ -152,7 +153,16 @@ void img_capture_init(void)
 
 }
 
-/************************************ Local Functions Declarations ******************************/
+void img_capture_send_img(void){
+    uint8_t *raw;
+    uint32_t size, w, h;
+
+    camera_get_image(&raw, &size, &w, &h);
+
+    esp32_send_img(raw, size, w, h, PIXFORMAT_RGB565);
+}
+
+/************************************ Static Functions ******************************/
 
 static uint8_t take_base()
 {
@@ -164,8 +174,6 @@ static uint8_t take_base()
     clusterize_image((uint16_t *) raw, base_img);
 
     /* TODO - Store original in Flash */
-
-    utils_send_img_to_pc(raw, size, w, h, camera_get_pixel_format());
 
     return IMG_CAP_RET_SUCCESS;
 }
@@ -206,7 +214,7 @@ static uint8_t img_compare(void)
     }
 
 #ifdef SEND_UART
-    utils_send_img_to_pc(raw, size, w, h, camera_get_pixel_format());
+    esp32_send_img(raw, size, w, h, PIXFORMAT_RGB565);
 #endif
 
     return IMG_CAP_RET_CHANGE;
