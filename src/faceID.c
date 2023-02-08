@@ -17,9 +17,8 @@
 #define S_MODULE_NAME "faceID"
 #define PRINT_TIME 1
 
-extern uint32_t ticks_1;
-extern uint32_t ticks_2;
-extern mxc_wut_cfg_t cfg;
+#define LED_FB_ADJUST {LED_Off(LED_BLUE); LED_On(LED_GREEN); LED_On(LED_RED);}
+#define LED_FB_NEUTRAL {LED_On(LED_BLUE); LED_Off(LED_GREEN); LED_Off(LED_RED);}
 
 /************************************ VARIABLES ******************************/
 volatile uint32_t cnn_time; // Stopwatch
@@ -43,25 +42,35 @@ faceID_decision_t faceid_run(void)
     initialize_cnn();
 
     uint8_t i;
-    for(i=0; i<50; i++){
+    for(i=0; i<FACEID_TRIES; i++){
         camera_start_capture_image();
         while (!camera_is_image_rcv());
         draw_frame();
 
         run_cnn(0, 0);
-        if(decision > 0) break;
+        if(decision >= 0) break;
+        if(decision == -4) LED_FB_ADJUST
+        else LED_FB_NEUTRAL
 
         run_cnn(-IMG_SHIFT_ANALYSIS, -IMG_SHIFT_ANALYSIS);
-        if(decision > 0) break;
+        if(decision >= 0) break;
+        if(decision == -4) LED_FB_ADJUST
+        else LED_FB_NEUTRAL
 
         run_cnn(IMG_SHIFT_ANALYSIS, IMG_SHIFT_ANALYSIS);
-        if(decision > 0) break;
+        if(decision >= 0) break;
+        if(decision == -4) LED_FB_ADJUST
+        else LED_FB_NEUTRAL
 
         run_cnn(-IMG_SHIFT_ANALYSIS, IMG_SHIFT_ANALYSIS);
-        if(decision > 0) break;
+        if(decision >= 0) break;
+        if(decision == -4) LED_FB_ADJUST
+        else LED_FB_NEUTRAL
 
         run_cnn(IMG_SHIFT_ANALYSIS, -IMG_SHIFT_ANALYSIS);
-        if(decision > 0) break;
+        if(decision >= 0) break;
+        if(decision == -4) LED_FB_ADJUST
+        else LED_FB_NEUTRAL
 
         MXC_Delay(MSEC(1));
     }

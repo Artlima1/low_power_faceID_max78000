@@ -12,6 +12,9 @@
 #define BYTE_PER_PIXEL 2
 
 #define IMG_SHIFT_ANALYSIS 4
+
+#define FACEID_TRIES 20
+
 // #define FAST_FIFO           // if defined, it uses fast fifo instead of fifo
 
 typedef struct {

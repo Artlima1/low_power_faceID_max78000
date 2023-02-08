@@ -87,7 +87,6 @@ StateMachine_t fsm[] = {
 };
 
 void fn_Init(){
-	LED_On(LED_RED);
 	#ifdef PRINT_DEBUG
 	printf("MAIN: State INIT\n");
 	#endif
@@ -114,8 +113,9 @@ void fn_Pic1(){
 	timer_count=0;
 
 	current_state = STATE_COMPARE;
-	LED_Off(LED_RED);
-	LED_On(LED_GREEN);
+	LED_On(LED_RED);
+	LED_Off(LED_GREEN);
+	LED_Off(LED_BLUE);
 }
 
 void fn_Compare(){
@@ -132,13 +132,15 @@ void fn_Compare(){
 	}
 	else if(decision==IMG_CAP_RET_CHANGE){
 		current_state = STATE_FACEID;
-		LED_Off(LED_GREEN);
 		LED_On(LED_BLUE);
+		LED_Off(LED_GREEN);
+		LED_Off(LED_RED);
 	}
 	else if(timer_count>=COMPS_PER_BASE_PIC){
 		current_state = STATE_PIC1;
+		LED_Off(LED_BLUE);
 		LED_Off(LED_GREEN);
-		LED_On(LED_RED);
+		LED_Off(LED_RED);
 	}
 }
 
@@ -151,13 +153,16 @@ void fn_FaceID(){
 	faceID_decision_t result = faceid_run();
 
 	if(result.decision >= 0){
-		LED_On(LED_GREEN);
 		current_state = STATE_RECOGNIZED;
+		LED_On(LED_GREEN);
+		LED_Off(LED_BLUE);
+		LED_Off(LED_RED);
 	}
 	else {
-		LED_Off(LED_BLUE);
-		LED_On(LED_RED);
 		current_state = STATE_PIC1;
+		LED_Off(LED_BLUE);
+		LED_Off(LED_GREEN);
+		LED_Off(LED_RED);
 	}
 
 }
@@ -168,11 +173,12 @@ void fn_Recgnized(){
 	#endif
 
 	// img_capture_send_img();
-	MXC_Delay(SEC(3));
+	MXC_Delay(SEC(10));
 
-	LED_Off(LED_BLUE);
-	LED_On(LED_RED);
 	current_state = STATE_PIC1;
+	LED_Off(LED_BLUE);
+	LED_Off(LED_GREEN);
+	LED_Off(LED_RED);
 }
 
 int main(void) {
