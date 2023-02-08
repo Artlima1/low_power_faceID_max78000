@@ -5,16 +5,16 @@
 
 #define CAMERA_FREQ (10 * 1000 * 1000)
 
-#define IMG_X_RES_CMP 100
-#define IMG_Y_RES_CMP 100
+#define IMG_X_RES_CMP 130
+#define IMG_Y_RES_CMP 170
 #define IMG_CMP_SIZE (IMG_X_RES_CMP * IMG_Y_RES_CMP * 2)
 
-#define IMG_X_RES_FACEID 170
-#define IMG_Y_RES_FACEID 130
+#define IMG_X_RES_FACEID 130
+#define IMG_Y_RES_FACEID 170
 #define IMG_FACEID_SIZE (IMG_X_RES_FACEID * IMG_Y_RES_FACEID * 2)
 
-#define BLOCK_PIXEL_W 10 /* Has to be a divisor of IMAGE_XRES */
-#define BLOCK_PIXEL_H 10 /* Has to be a divisor of IMAGE_YRES */
+#define BLOCK_PIXEL_W 13 /* Has to be a divisor of IMAGE_XRES */
+#define BLOCK_PIXEL_H 17 /* Has to be a divisor of IMAGE_YRES */
 
 #define SAD_THRESHOLD 60000
 #define MIN_BLOCK_DIF 4000

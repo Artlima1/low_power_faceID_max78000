@@ -7,7 +7,7 @@
 /* **** Globals **** */
 #define TX_END_CHAR '\r'
 #define TX_END_CHAR_REP 3 /* Sends \r\r\r at end of TX, pattern identified in ESP */
-#define TX_BUFF_SIZE 1024
+#define TX_BUFF_SIZE 300
 
 #define ESP32_UART MXC_UART2
 #define UART_BAUD 14400

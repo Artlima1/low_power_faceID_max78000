@@ -9,7 +9,6 @@
 #include "mxc_delay.h"
 #include "sema_regs.h"
 #include "tmr.h"
-#include "utils.h"
 #include "dma.h"
 #include "icc.h"
 #include "esp32.h"
@@ -38,7 +37,7 @@
 
 /************************************ VARIABLES ******************************/
 
-rgb_t base_img[CLUSTER_SIZE];
+rgb_t * base_img;
 int dma_channel;
 
 /************************************ Static Functions Declarations ******************************/
@@ -152,38 +151,44 @@ void img_capture_send_img(void){
 }
 
 uint8_t image_capture_set_img_res(uint8_t img_res_type) {
-    uint8_t ret = IMG_CAP_RET_ERROR;
     int res;
 
     switch (img_res_type)
     {
     case IMG_RES_COMPARE: {
+        base_img = malloc(CLUSTER_SIZE);
+
+        if(base_img == NULL){
+            printf("Error alocating memory for base\n");
+            return IMG_CAP_RET_ERROR;
+        }
+
         camera_reset();
         res = camera_setup(IMG_X_RES_CMP, IMG_Y_RES_CMP, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel);
         if(res != STATUS_OK){
-            printf("Error %d\n", res);
+            printf("Error in camera setup %d\n", res);
+            return IMG_CAP_RET_ERROR;
         }
-        else {
-            ret = IMG_CAP_RET_SUCCESS;
-        }
-        break;
+
+        return IMG_CAP_RET_SUCCESS;
     }
     case IMG_RES_FACEID: {
+        free(base_img);
+        
         camera_reset();
         res = camera_setup(IMG_X_RES_FACEID, IMG_Y_RES_FACEID, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel);
         if(res != STATUS_OK){
-            printf("Error %d\n", res);
+            printf("Error in camera setup %d\n", res);
+            return IMG_CAP_RET_ERROR;
         }
-        else {
-            ret = IMG_CAP_RET_SUCCESS;
-        }
-        break;
+
+        return IMG_CAP_RET_SUCCESS;
     }
     default:
         break;
     }
 
-    return ret;
+    return IMG_CAP_RET_ERROR;
 }
 
 /************************************ Static Functions ******************************/
