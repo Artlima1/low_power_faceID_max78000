@@ -18,6 +18,7 @@
 #include "led.h"
 #include "mxc_delay.h"
 #include "esp32.h"
+#include "faceID.h"
 
 #define S_MODULE_NAME "MAIN-RISCV"
 #define PRINT_DEBUG
@@ -91,7 +92,12 @@ void fn_Init(){
 	#endif
 
 	img_capture_init();
-	image_capture_set_img_res(IMG_RES_COMPARE);
+	if(image_capture_set_img_res(IMG_RES_COMPARE) != IMG_CAP_RET_SUCCESS){
+		printf("Error setting resolution\n");
+		current_state = STATE_INIT;
+		return;
+	}
+
 	esp32_init();
 
 	/* Camera need some exposition time after init */
@@ -126,7 +132,12 @@ void fn_Compare(){
 		#endif
 	}
 	else if(decision==IMG_CAP_RET_CHANGE){
-		image_capture_set_img_res(IMG_RES_FACEID);
+		if(image_capture_set_img_res(IMG_RES_FACEID) != IMG_CAP_RET_SUCCESS){
+			printf("Error setting resolution\n");
+			current_state = STATE_INIT;
+			return;
+		}
+
 		current_state = STATE_FACEID;
 		LED_Off(LED_GREEN);
 		LED_On(LED_BLUE);
@@ -139,15 +150,42 @@ void fn_Compare(){
 }
 
 void fn_FaceID(){
-	/* TODO */
+	#ifdef PRINT_DEBUG
+	printf("MAIN: State FACEID\n");
+	#endif
+
+	faceID_decision_t result = faceid_run();
+
+	if(result.decision >= 0){
+		LED_On(LED_GREEN);
+		current_state = STATE_RECOGNIZED;
+	}
+	else {
+		if(image_capture_set_img_res(IMG_RES_COMPARE) != IMG_CAP_RET_SUCCESS){
+			printf("Error setting resolution\n");
+			current_state = STATE_INIT;
+			return;
+		}
+
+		LED_Off(LED_BLUE);
+		LED_On(LED_GREEN);
+		current_state = STATE_COMPARE;
+	}
 }
 
 void fn_Recgnized(){
 	#ifdef PRINT_DEBUG
 	printf("MAIN: Face RECOGNIZED\n");
 	#endif
-	img_capture_send_img();
-	MXC_Delay(SEC(1));
+
+	// img_capture_send_img();
+	MXC_Delay(SEC(3));
+
+	if(image_capture_set_img_res(IMG_RES_COMPARE) != IMG_CAP_RET_SUCCESS){
+		printf("Error setting resolution\n");
+		current_state = STATE_INIT;
+		return;
+	}
 
 	LED_Off(LED_BLUE);
 	LED_On(LED_GREEN);

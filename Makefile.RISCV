@@ -75,6 +75,9 @@ SRCS  = main_riscv.c
 SRCS += src/utils.c
 SRCS += src/img_capture.c
 SRCS += src/esp32.c
+SRCS += src/cnn.c
+SRCS += src/embedding_process.c
+SRCS += src/faceID.c
 
 # Where to find source files for this test
 VPATH  = .

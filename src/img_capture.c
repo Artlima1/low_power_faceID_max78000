@@ -138,14 +138,6 @@ void img_capture_init(void)
     printf("IMG_CAP: Camera Manufacture ID is %04x\n", id);
 #endif
 
-    if (ret != STATUS_OK)
-    {
-#ifdef PRINT_DEBUG
-        printf("IMG_CAP: Error returned from setting up camera. Error %d\n", ret);
-#endif
-        return;
-    }
-
     camera_write_reg(0x0c, 0x56); // camera vertical flip=0
 
 }
@@ -161,19 +153,28 @@ void img_capture_send_img(void){
 
 uint8_t image_capture_set_img_res(uint8_t img_res_type) {
     uint8_t ret = IMG_CAP_RET_ERROR;
+    int res;
 
     switch (img_res_type)
     {
     case IMG_RES_COMPARE: {
         camera_reset();
-        if(camera_setup(IMG_X_RES_CMP, IMG_Y_RES_CMP, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel) == STATUS_OK){
+        res = camera_setup(IMG_X_RES_CMP, IMG_Y_RES_CMP, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel);
+        if(res != STATUS_OK){
+            printf("Error %d\n", res);
+        }
+        else {
             ret = IMG_CAP_RET_SUCCESS;
         }
         break;
     }
     case IMG_RES_FACEID: {
         camera_reset();
-        if(camera_setup(IMG_X_RES_FACEID, IMG_Y_RES_FACEID, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel) == STATUS_OK){
+        res = camera_setup(IMG_X_RES_FACEID, IMG_Y_RES_FACEID, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel);
+        if(res != STATUS_OK){
+            printf("Error %d\n", res);
+        }
+        else {
             ret = IMG_CAP_RET_SUCCESS;
         }
         break;
@@ -255,7 +256,7 @@ static void clusterize_image(uint16_t * img, rgb_t * dest){
 
             for(px=0; px < BLOCK_PIXEL_W; px++){
                 for(py=0; py < BLOCK_PIXEL_H; py++){
-                    pixel = &img[(by*BLOCK_PIXEL_H + py)*IMAGE_XRES + (bx*BLOCK_PIXEL_W + px)];
+                    pixel = &img[(by*BLOCK_PIXEL_H + py)*IMG_X_RES_CMP + (bx*BLOCK_PIXEL_W + px)];
 
                     block_value.r += ((*pixel) & RED_MASK) >> RED_OFFSET;
                     block_value.g += ((*pixel) & GREEN_MASK) >> GREEN_OFFSET;
