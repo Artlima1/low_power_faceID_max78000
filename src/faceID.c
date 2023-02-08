@@ -89,42 +89,42 @@ static void draw_frame(void)
     image = (uint16_t *)raw; // 2bytes per pixel RGB565
 
     // left line
-    image += ((IMG_Y_RES_FACEID - (WIDTH + 2 * THICKNESS)) / 2) * IMG_X_RES_FACEID;
+    image += ((IMG_Y_RES - (WIDTH + 2 * THICKNESS)) / 2) * IMG_X_RES;
 
     for (int i = 0; i < THICKNESS; i++)
     {
-        image += ((IMG_X_RES_FACEID - (HEIGHT + 2 * THICKNESS)) / 2);
+        image += ((IMG_X_RES - (HEIGHT + 2 * THICKNESS)) / 2);
 
         for (int j = 0; j < HEIGHT + 2 * THICKNESS; j++)
         {
             *(image++) = FRAME_COLOR; // color
         }
 
-        image += ((IMG_X_RES_FACEID - (HEIGHT + 2 * THICKNESS)) / 2);
+        image += ((IMG_X_RES - (HEIGHT + 2 * THICKNESS)) / 2);
     }
 
     // right line
     image = ((uint16_t *)raw) +
-            (((IMG_Y_RES_FACEID - (WIDTH + 2 * THICKNESS)) / 2) + WIDTH + THICKNESS) * IMG_X_RES_FACEID;
+            (((IMG_Y_RES - (WIDTH + 2 * THICKNESS)) / 2) + WIDTH + THICKNESS) * IMG_X_RES;
 
     for (int i = 0; i < THICKNESS; i++)
     {
-        image += ((IMG_X_RES_FACEID - (HEIGHT + 2 * THICKNESS)) / 2);
+        image += ((IMG_X_RES - (HEIGHT + 2 * THICKNESS)) / 2);
 
         for (int j = 0; j < HEIGHT + 2 * THICKNESS; j++)
         {
             *(image++) = FRAME_COLOR; // color
         }
 
-        image += ((IMG_X_RES_FACEID - (HEIGHT + 2 * THICKNESS)) / 2);
+        image += ((IMG_X_RES - (HEIGHT + 2 * THICKNESS)) / 2);
     }
 
     // top + bottom lines
-    image = ((uint16_t *)raw) + ((IMG_Y_RES_FACEID - (WIDTH + 2 * THICKNESS)) / 2) * IMG_X_RES_FACEID;
+    image = ((uint16_t *)raw) + ((IMG_Y_RES - (WIDTH + 2 * THICKNESS)) / 2) * IMG_X_RES;
 
     for (int i = 0; i < WIDTH + 2 * THICKNESS; i++)
     {
-        image += ((IMG_X_RES_FACEID - (HEIGHT + 2 * THICKNESS)) / 2);
+        image += ((IMG_X_RES - (HEIGHT + 2 * THICKNESS)) / 2);
 
         for (int j = 0; j < THICKNESS; j++)
         {
@@ -138,7 +138,7 @@ static void draw_frame(void)
             *(image++) = FRAME_COLOR; // color
         }
 
-        image += ((IMG_X_RES_FACEID - (HEIGHT + 2 * THICKNESS)) / 2);
+        image += ((IMG_X_RES - (HEIGHT + 2 * THICKNESS)) / 2);
     }
 }
 
@@ -253,8 +253,8 @@ static void load_data(uint8_t *raw, int x_offset, int y_offset)
     uint8_t *data;
     for (int i = y_offset; i < HEIGHT + y_offset; i++)
     {
-        data = raw + ((IMG_Y_RES_FACEID - (WIDTH)) / 2) * IMG_X_RES_FACEID * BYTE_PER_PIXEL;
-        data += (((IMG_X_RES_FACEID - (HEIGHT)) / 2) + i) * BYTE_PER_PIXEL;
+        data = raw + ((IMG_Y_RES - (WIDTH)) / 2) * IMG_X_RES * BYTE_PER_PIXEL;
+        data += (((IMG_X_RES - (HEIGHT)) / 2) + i) * BYTE_PER_PIXEL;
 
         for (int j = x_offset; j < WIDTH + x_offset; j++)
         {
@@ -262,10 +262,10 @@ static void load_data(uint8_t *raw, int x_offset, int y_offset)
             int8_t r, g, b;
             uint32_t number;
 
-            ub = (uint8_t)(data[j * BYTE_PER_PIXEL * IMG_X_RES_FACEID + 1] << 3);
-            ug = (uint8_t)((data[j * BYTE_PER_PIXEL * IMG_X_RES_FACEID] << 5) |
-                           ((data[j * BYTE_PER_PIXEL * IMG_X_RES_FACEID + 1] & 0xE0) >> 3));
-            ur = (uint8_t)(data[j * BYTE_PER_PIXEL * IMG_X_RES_FACEID] & 0xF8);
+            ub = (uint8_t)(data[j * BYTE_PER_PIXEL * IMG_X_RES + 1] << 3);
+            ug = (uint8_t)((data[j * BYTE_PER_PIXEL * IMG_X_RES] << 5) |
+                           ((data[j * BYTE_PER_PIXEL * IMG_X_RES + 1] & 0xE0) >> 3));
+            ur = (uint8_t)(data[j * BYTE_PER_PIXEL * IMG_X_RES] & 0xF8);
 
             b = ub - 128;
             g = ug - 128;

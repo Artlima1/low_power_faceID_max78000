@@ -92,11 +92,6 @@ void fn_Init(){
 	#endif
 
 	img_capture_init();
-	if(image_capture_set_img_res(IMG_RES_COMPARE) != IMG_CAP_RET_SUCCESS){
-		printf("Error setting resolution\n");
-		current_state = STATE_INIT;
-		return;
-	}
 
 	esp32_init();
 
@@ -132,12 +127,6 @@ void fn_Compare(){
 		#endif
 	}
 	else if(decision==IMG_CAP_RET_CHANGE){
-		// if(image_capture_set_img_res(IMG_RES_FACEID) != IMG_CAP_RET_SUCCESS){
-		// 	printf("Error setting resolution\n");
-		// 	current_state = STATE_INIT;
-		// 	return;
-		// }
-
 		current_state = STATE_FACEID;
 		LED_Off(LED_GREEN);
 		LED_On(LED_BLUE);
@@ -161,12 +150,6 @@ void fn_FaceID(){
 		current_state = STATE_RECOGNIZED;
 	}
 	else {
-		// if(image_capture_set_img_res(IMG_RES_COMPARE) != IMG_CAP_RET_SUCCESS){
-		// 	printf("Error setting resolution\n");
-		// 	current_state = STATE_INIT;
-		// 	return;
-		// }
-
 		LED_Off(LED_BLUE);
 		LED_On(LED_RED);
 		current_state = STATE_PIC1;
@@ -180,12 +163,6 @@ void fn_Recgnized(){
 
 	// img_capture_send_img();
 	MXC_Delay(SEC(3));
-
-	// if(image_capture_set_img_res(IMG_RES_COMPARE) != IMG_CAP_RET_SUCCESS){
-	// 	printf("Error setting resolution\n");
-	// 	current_state = STATE_INIT;
-	// 	return;
-	// }
 
 	LED_Off(LED_BLUE);
 	LED_On(LED_RED);

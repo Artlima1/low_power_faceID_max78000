@@ -26,8 +26,8 @@
 #define GREEN_OFFSET 5
 #define BLUE_MASK 0x1F /* 0000 0000 0001 1111 */
 
-#define BLOCKS_X (IMG_X_RES_CMP / BLOCK_PIXEL_W)
-#define BLOCKS_Y (IMG_Y_RES_CMP / BLOCK_PIXEL_H)
+#define BLOCKS_X (IMG_X_RES / BLOCK_PIXEL_W)
+#define BLOCKS_Y (IMG_Y_RES / BLOCK_PIXEL_H)
 #define BLOCKS_IN_CLUSTER (BLOCKS_X * BLOCKS_Y)
 
 #define RGB_PIXEL_SIZE sizeof(rgb_t)
@@ -137,8 +137,22 @@ void img_capture_init(void)
     printf("IMG_CAP: Camera Manufacture ID is %04x\n", id);
 #endif
 
+    ret = camera_setup(IMG_X_RES, IMG_Y_RES, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel);
+    if(ret != STATUS_OK){
+// #ifdef PRINT_DEBUG
+        printf("Error in camera setup %d\n", ret);
+// #endif
+        return;
+    }
+
     camera_write_reg(0x0c, 0x56); // camera vertical flip=0
 
+    base_img = malloc(CLUSTER_SIZE);
+
+    if(base_img==NULL){
+        printf("Error in allocating memory for base\n");
+        return;
+    }
 }
 
 void img_capture_send_img(void){
@@ -148,47 +162,6 @@ void img_capture_send_img(void){
     camera_get_image(&raw, &size, &w, &h);
 
     esp32_send_img(raw, size, w, h, PIXFORMAT_RGB565);
-}
-
-uint8_t image_capture_set_img_res(uint8_t img_res_type) {
-    int res;
-
-    switch (img_res_type)
-    {
-    case IMG_RES_COMPARE: {
-        base_img = malloc(CLUSTER_SIZE);
-
-        if(base_img == NULL){
-            printf("Error alocating memory for base\n");
-            return IMG_CAP_RET_ERROR;
-        }
-
-        camera_reset();
-        res = camera_setup(IMG_X_RES_CMP, IMG_Y_RES_CMP, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel);
-        if(res != STATUS_OK){
-            printf("Error in camera setup %d\n", res);
-            return IMG_CAP_RET_ERROR;
-        }
-
-        return IMG_CAP_RET_SUCCESS;
-    }
-    case IMG_RES_FACEID: {
-        free(base_img);
-        
-        camera_reset();
-        res = camera_setup(IMG_X_RES_FACEID, IMG_Y_RES_FACEID, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel);
-        if(res != STATUS_OK){
-            printf("Error in camera setup %d\n", res);
-            return IMG_CAP_RET_ERROR;
-        }
-
-        return IMG_CAP_RET_SUCCESS;
-    }
-    default:
-        break;
-    }
-
-    return IMG_CAP_RET_ERROR;
 }
 
 /************************************ Static Functions ******************************/
@@ -261,7 +234,7 @@ static void clusterize_image(uint16_t * img, rgb_t * dest){
 
             for(px=0; px < BLOCK_PIXEL_W; px++){
                 for(py=0; py < BLOCK_PIXEL_H; py++){
-                    pixel = &img[(by*BLOCK_PIXEL_H + py)*IMG_X_RES_CMP + (bx*BLOCK_PIXEL_W + px)];
+                    pixel = &img[(by*BLOCK_PIXEL_H + py)*IMG_X_RES + (bx*BLOCK_PIXEL_W + px)];
 
                     block_value.r += ((*pixel) & RED_MASK) >> RED_OFFSET;
                     block_value.g += ((*pixel) & GREEN_MASK) >> GREEN_OFFSET;

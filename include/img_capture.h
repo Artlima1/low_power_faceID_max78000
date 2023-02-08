@@ -5,13 +5,9 @@
 
 #define CAMERA_FREQ (10 * 1000 * 1000)
 
-#define IMG_X_RES_CMP 130
-#define IMG_Y_RES_CMP 170
-#define IMG_CMP_SIZE (IMG_X_RES_CMP * IMG_Y_RES_CMP * 2)
-
-#define IMG_X_RES_FACEID 130
-#define IMG_Y_RES_FACEID 170
-#define IMG_FACEID_SIZE (IMG_X_RES_FACEID * IMG_Y_RES_FACEID * 2)
+#define IMG_X_RES 130
+#define IMG_Y_RES 170
+#define IMG_SIZE (IMG_X_RES * IMG_Y_RES * 2)
 
 #define BLOCK_PIXEL_W 13 /* Has to be a divisor of IMAGE_XRES */
 #define BLOCK_PIXEL_H 17 /* Has to be a divisor of IMAGE_YRES */
@@ -46,6 +42,5 @@ typedef struct
 uint8_t img_capture(uint8_t capture_mode);
 void img_capture_send_img(void);
 void img_capture_init(void);
-uint8_t image_capture_set_img_res(uint8_t img_res_type);
 
 #endif // _IMG_CAPTURE_H_
