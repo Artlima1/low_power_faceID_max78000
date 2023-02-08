@@ -79,7 +79,7 @@ uint8_t img_capture(uint8_t capture_mode)
     return ret;
 }
 
-void img_capture_init(void)
+uint8_t img_capture_init(void)
 {
     int ret = 0;
     int slaveAddress;
@@ -115,7 +115,7 @@ void img_capture_init(void)
 #ifdef PRINT_DEBUG
         printf("IMG_CAP: Error returned from reading camera id. Error %d\n", ret);
 #endif
-        return;
+        return IMG_CAP_RET_ERROR;
     }
 
 #ifdef PRINT_DEBUG
@@ -130,7 +130,7 @@ void img_capture_init(void)
 #ifdef PRINT_DEBUG
         printf("IMG_CAP: Error returned from reading camera id. Error %d\n", ret);
 #endif
-        return;
+        return IMG_CAP_RET_ERROR;
     }
 
 #ifdef PRINT_DEBUG
@@ -142,17 +142,12 @@ void img_capture_init(void)
 // #ifdef PRINT_DEBUG
         printf("Error in camera setup %d\n", ret);
 // #endif
-        return;
+        return IMG_CAP_RET_ERROR;
     }
 
     camera_write_reg(0x0c, 0x56); // camera vertical flip=0
 
-    base_img = malloc(CLUSTER_SIZE);
-
-    if(base_img==NULL){
-        printf("Error in allocating memory for base\n");
-        return;
-    }
+    return IMG_CAP_RET_SUCCESS;
 }
 
 void img_capture_send_img(void){
@@ -164,6 +159,10 @@ void img_capture_send_img(void){
     esp32_send_img(raw, size, w, h, PIXFORMAT_RGB565);
 }
 
+void img_capture_free_space(void){
+    free(base_img);
+}
+
 /************************************ Static Functions ******************************/
 
 static uint8_t take_base()
@@ -172,6 +171,16 @@ static uint8_t take_base()
     uint32_t size, w, h;
 
     camera_get_image(&raw, &size, &w, &h);
+
+    if(base_img == NULL){
+        base_img = malloc(CLUSTER_SIZE);
+    }
+
+
+    if(base_img==NULL){
+        printf("Error in allocating memory for base\n");
+        return IMG_CAP_RET_ERROR;
+    }
 
     clusterize_image((uint16_t *) raw, base_img);
 

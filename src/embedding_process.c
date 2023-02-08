@@ -124,6 +124,14 @@ int init_database(void)
     return 0;
 }
 
+void free_database(void){
+    free(pDistance);
+    free(pMeanDistance);
+    free(pMinDistance);
+    free(pClosestSubId);
+    free(pMinDistanceCounter);
+}
+
 char *get_subject(int ID)
 {
     char *point = (char *)(pDatabaseInfo + 1);

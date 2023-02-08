@@ -43,34 +43,34 @@ faceID_decision_t faceid_run(void)
     initialize_cnn();
 
     uint8_t i;
-    for(i=0; i<5; i++){
+    for(i=0; i<50; i++){
         camera_start_capture_image();
-        while (!camera_is_image_rcv())
-            ;
+        while (!camera_is_image_rcv());
         draw_frame();
 
-        /* Run CNN three times on original and shifted images */
         run_cnn(0, 0);
+        if(decision > 0) break;
 
-        if(decision > 0){
-            break;
-        }
+        run_cnn(-IMG_SHIFT_ANALYSIS, -IMG_SHIFT_ANALYSIS);
+        if(decision > 0) break;
 
-        // if ((run_count % 2) == 0) {
-        //     run_cnn(-IMG_SHIFT_ANALYSIS, -IMG_SHIFT_ANALYSIS);
-        //     run_cnn(IMG_SHIFT_ANALYSIS, IMG_SHIFT_ANALYSIS);
-        // } else {
-        //     run_cnn(-IMG_SHIFT_ANALYSIS, IMG_SHIFT_ANALYSIS);
-        //     run_cnn(IMG_SHIFT_ANALYSIS, -IMG_SHIFT_ANALYSIS);
-        // }
-        // run_count++;
+        run_cnn(IMG_SHIFT_ANALYSIS, IMG_SHIFT_ANALYSIS);
+        if(decision > 0) break;
 
-        MXC_Delay(MSEC(10));
+        run_cnn(-IMG_SHIFT_ANALYSIS, IMG_SHIFT_ANALYSIS);
+        if(decision > 0) break;
+
+        run_cnn(IMG_SHIFT_ANALYSIS, -IMG_SHIFT_ANALYSIS);
+        if(decision > 0) break;
+
+        MXC_Delay(MSEC(1));
     }
+
+    free_database();
 
     ret.decision = decision;
     ret.name = name;
-
+    
     return ret;
 }
 
@@ -155,19 +155,15 @@ static void run_cnn(int x_offset, int y_offset)
 
     MXC_SYS_ClockEnable(MXC_SYS_PERIPH_CLOCK_CNN); // Enable CNN clock
 
-    printf("Starting CNN...\n");
     cnn_start();
 
-    printf("CNN Started! Loading data...\n");
     load_data(raw, x_offset, y_offset);
 
-    printf("Data Loaded! Waiting for CNN to process...\n");
     // CNN interrupt wakes up CPU from sleep mode
     while (cnn_time == 0)
     {
         asm volatile("wfi"); // Sleep and wait for CNN interrupt
     }
-    printf("Result ready!\n");
 
     cnn_unload((uint32_t *)(raw));
 

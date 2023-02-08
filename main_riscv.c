@@ -19,6 +19,7 @@
 #include "mxc_delay.h"
 #include "esp32.h"
 #include "faceID.h"
+#include "embedding_process.h"
 
 #define S_MODULE_NAME "MAIN-RISCV"
 #define PRINT_DEBUG
@@ -91,9 +92,12 @@ void fn_Init(){
 	printf("MAIN: State INIT\n");
 	#endif
 
-	img_capture_init();
-
 	esp32_init();
+
+	if(img_capture_init() != IMG_CAP_RET_SUCCESS){
+		printf("Could not initialize the image capture\n");
+		while(1);
+	}
 
 	/* Camera need some exposition time after init */
 	MXC_Delay(SEC(2));
@@ -143,6 +147,7 @@ void fn_FaceID(){
 	printf("MAIN: State FACEID\n");
 	#endif
 
+	img_capture_free_space();
 	faceID_decision_t result = faceid_run();
 
 	if(result.decision >= 0){
@@ -154,6 +159,7 @@ void fn_FaceID(){
 		LED_On(LED_RED);
 		current_state = STATE_PIC1;
 	}
+
 }
 
 void fn_Recgnized(){

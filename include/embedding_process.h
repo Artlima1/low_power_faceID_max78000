@@ -58,6 +58,7 @@ typedef struct __attribute__((packed)) sMinDistance {
 /*****************************     FUNCTIONS *********************************/
 
 int init_database(void);
+void free_database(void);
 
 char *get_subject(int ID);
 

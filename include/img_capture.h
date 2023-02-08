@@ -41,6 +41,7 @@ typedef struct
 
 uint8_t img_capture(uint8_t capture_mode);
 void img_capture_send_img(void);
-void img_capture_init(void);
+uint8_t img_capture_init(void);
+void img_capture_free_space(void);
 
 #endif // _IMG_CAPTURE_H_
