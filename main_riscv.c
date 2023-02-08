@@ -153,6 +153,7 @@ void fn_FaceID(){
 	faceID_decision_t result = faceid_run();
 
 	if(result.decision >= 0){
+		printf("%s recognized!\n", result.name);
 		current_state = STATE_RECOGNIZED;
 		LED_On(LED_GREEN);
 		LED_Off(LED_BLUE);
@@ -172,8 +173,8 @@ void fn_Recgnized(){
 	printf("MAIN: Face RECOGNIZED\n");
 	#endif
 
-	// img_capture_send_img();
-	MXC_Delay(SEC(10));
+	img_capture_send_img();
+	MXC_Delay(SEC(5));
 
 	current_state = STATE_PIC1;
 	LED_Off(LED_BLUE);

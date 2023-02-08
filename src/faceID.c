@@ -15,7 +15,7 @@
 #include "lp.h"
 
 #define S_MODULE_NAME "faceID"
-#define PRINT_TIME 1
+// #define PRINT_DEBUG
 
 #define LED_FB_ADJUST {LED_Off(LED_BLUE); LED_On(LED_GREEN); LED_On(LED_RED);}
 #define LED_FB_NEUTRAL {LED_On(LED_BLUE); LED_Off(LED_GREEN); LED_Off(LED_RED);}
@@ -183,7 +183,9 @@ static void run_cnn(int x_offset, int y_offset)
 
     int pResult = calculate_minDistance((uint8_t *)(raw));
 
+#ifdef PRINT_DEBUG
     printf("Result = %d \n", pResult);
+#endif
 
     if (pResult == 0)
     {
@@ -195,7 +197,9 @@ static void run_cnn(int x_offset, int y_offset)
         prev_decision = decision;
         decision = -5;
 
+        #ifdef PRINT_DEBUG
         printf("counter_len: %d,  %d,%d,%d\n", counter_len, counter[0], counter[1], counter[2]);
+        #endif
 
         for (uint8_t id = 0; id < counter_len; ++id)
         {
@@ -204,8 +208,12 @@ static void run_cnn(int x_offset, int y_offset)
                 name = get_subject(id);
                 decision = id;
                 noface_count = 0;
+
+                #ifdef PRINT_DEBUG
                 printf("Status: %s \n", name);
                 printf("Detection: %s: %d\n", name, counter[id]);
+                #endif
+
                 break;
             }
             else if (counter[id] >= (uint8_t)(closest_sub_buffer_size * 0.4))
@@ -213,8 +221,12 @@ static void run_cnn(int x_offset, int y_offset)
                 name = "Adjust Face";
                 decision = -2;
                 noface_count = 0;
+
+                #ifdef PRINT_DEBUG
                 printf("Status: %s \n", name);
                 printf("Detection: %s: %d\n", name, counter[id]);
+                #endif
+
                 break;
             }
             else if (counter[id] > closest_sub_buffer_size * 0.2)
@@ -222,8 +234,12 @@ static void run_cnn(int x_offset, int y_offset)
                 name = "Unknown";
                 decision = -1;
                 noface_count = 0;
+
+                #ifdef PRINT_DEBUG
                 printf("Status: %s \n", name);
                 printf("Detection: %s: %d\n", name, counter[id]);
+                #endif
+
                 break;
             }
             else if (counter[id] > closest_sub_buffer_size * 0.1)
@@ -231,8 +247,12 @@ static void run_cnn(int x_offset, int y_offset)
                 name = "";
                 decision = -3;
                 noface_count = 0;
+
+                #ifdef PRINT_DEBUG
                 printf("Status: %s \n", name);
                 printf("Detection: %s: %d\n", name, counter[id]);
+                #endif
+
             }
             else
             {
@@ -243,12 +263,19 @@ static void run_cnn(int x_offset, int y_offset)
                     name = "No face";
                     decision = -4;
                     noface_count--;
+
+                    #ifdef PRINT_DEBUG
                     printf("Detection: %s: %d\n", name, counter[id]);
+                    #endif
+                    
                 }
             }
         }
 
+        #ifdef PRINT_DEBUG
         printf("Decision: %d Name:%s \n", decision, name);
+        #endif
+
     }
 }
 
