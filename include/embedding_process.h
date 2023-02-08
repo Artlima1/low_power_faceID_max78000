@@ -31,24 +31,40 @@
  *
  ******************************************************************************/
 
-#ifndef _UTILS_H_
-#define _UTILS_H_
+#ifndef _EMBEDDINGS_PROCESS_H_
+#define _EMBEDDINGS_PROCESS_H_
 
 #include <stdint.h>
-#include "uart.h"
 
 /*****************************     MACROS    *********************************/
 
+#define thresh_for_unknown_subject 9993
+//#define thresh_for_unknown_subject 313600
+#define closest_sub_buffer_size 3 * 7
+
 /*****************************     VARIABLES *********************************/
+
+typedef struct __attribute__((packed)) sMeanDistance {
+    uint8_t subID;
+    uint8_t number;
+    int32_t distance;
+} tsMeanDistance;
+
+typedef struct __attribute__((packed)) sMinDistance {
+    uint8_t subID;
+    int32_t distance;
+} tsMinDistance;
 
 /*****************************     FUNCTIONS *********************************/
 
-uint32_t utils_get_time_ms(void);
+int init_database(void);
+void free_database(void);
 
-void utils_send_bytes(mxc_uart_regs_t *uart, uint8_t *ptr, int length);
+char *get_subject(int ID);
 
-void utils_delay_ms(uint32_t ms);
-void utils_hexDump(const char *title, uint8_t *buf, uint32_t len);
-int utils_send_img_to_pc(uint8_t *img, uint32_t imgLen, int w, int h, uint8_t *pixelformat);
+int calculate_minDistance(const uint8_t *embedding);
 
-#endif // _UTILS_H_
+void get_min_dist_counter(uint8_t **counter, uint8_t *counter_len);
+tsMinDistance *get_min_distance();
+
+#endif // _EMBEDDINGS_PROCESS_H_

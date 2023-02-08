@@ -1,45 +1,3 @@
-/******************************************************************************
- * Copyright (C) 2022 Maxim Integrated Products, Inc., All Rights Reserved.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a
- * copy of this software and associated documentation files (the "Software"),
- * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
- * and/or sell copies of the Software, and to permit persons to whom the
- * Software is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included
- * in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL MAXIM INTEGRATED BE LIABLE FOR ANY CLAIM, DAMAGES
- * OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
- * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
- * OTHER DEALINGS IN THE SOFTWARE.
- *
- * Except as contained in this notice, the name of Maxim Integrated
- * Products, Inc. shall not be used except as stated in the Maxim Integrated
- * Products, Inc. Branding Policy.
- *
- * The mere transfer of this software does not imply any licenses
- * of trade secrets, proprietary technology, copyrights, patents,
- * trademarks, maskwork rights, or any other form of intellectual
- * property whatsoever. Maxim Integrated Products, Inc. retains all
- * ownership rights.
- *
- ******************************************************************************/
-/*
- * @file    main_riscv.c
- * @brief   FaceID EvKit Demo
- *
- * @details
- *
- */
-
-#define S_MODULE_NAME "MAIN-RISCV"
-// #define PRINT_DEBUG
 /***** Includes *****/
 #include <stdint.h>
 #include <stdio.h>
@@ -58,6 +16,13 @@
 #include "lp.h"
 #include "gcfr_regs.h"
 #include "led.h"
+#include "mxc_delay.h"
+#include "esp32.h"
+#include "faceID.h"
+#include "embedding_process.h"
+
+#define S_MODULE_NAME "MAIN-RISCV"
+#define PRINT_DEBUG
 
 /***** Definitions *****/
 #define OST_CLOCK_SOURCE MXC_TMR_32K_CLK // \ref mxc_tmr_clock_t
@@ -65,16 +30,10 @@
 #define OST_FREQ 10 // (Hz)
 #define OST_TIMER MXC_TMR1 // Can be MXC_TMR0 through MXC_TMR5
 
-#define COMPS_PER_BASE_PIC 100
+#define COMPS_PER_BASE_PIC 1000
 
 /***** Globals *****/
 int timer_count = 0;
-static int blink_count = 0;
-
-__attribute__((section(
-    ".shared__at__mailbox"))) volatile uint32_t mail_box[ARM_MAILBOX_SIZE + RISCV_MAILBOX_SIZE];
-volatile uint32_t *arm_mail_box = &mail_box[0];
-volatile uint32_t *riscv_mail_box = &mail_box[ARM_MAILBOX_SIZE];
 
 void __attribute__((interrupt("machine")))TMR1_IRQHandler(void) {
     // Clear interrupt
@@ -101,7 +60,8 @@ typedef enum {
     STATE_INIT,
     STATE_PIC1,
     STATE_COMPARE,
-	STATE_CHANGE,
+	STATE_FACEID,
+	STATE_RECOGNIZED,
     NUM_STATES
 }State_t;
 
@@ -110,25 +70,37 @@ typedef struct{
     void (*state_function)(void);
 } StateMachine_t;
 
-void fn_INIT(void);
+void fn_Init(void);
 void fn_Pic1(void);
 void fn_Compare(void);
-void fn_Change(void);
+void fn_FaceID(void);
+void fn_Recgnized(void);
 
 State_t current_state = STATE_INIT;
 
 StateMachine_t fsm[] = {
-                      {STATE_INIT, fn_INIT},
+                      {STATE_INIT, fn_Init},
                       {STATE_PIC1, fn_Pic1},
                       {STATE_COMPARE, fn_Compare},
-                      {STATE_CHANGE, fn_Change}
+                      {STATE_FACEID, fn_FaceID},
+					  {STATE_RECOGNIZED, fn_Recgnized}
 };
 
-void fn_INIT(){
+void fn_Init(){
 	#ifdef PRINT_DEBUG
 	printf("MAIN: State INIT\n");
 	#endif
-	
+
+	esp32_init();
+
+	if(img_capture_init() != IMG_CAP_RET_SUCCESS){
+		printf("Could not initialize the image capture\n");
+		while(1);
+	}
+
+	/* Camera need some exposition time after init */
+	MXC_Delay(SEC(2));
+
 	current_state = STATE_PIC1;
 }
 
@@ -141,11 +113,14 @@ void fn_Pic1(){
 	timer_count=0;
 
 	current_state = STATE_COMPARE;
+	LED_On(LED_RED);
+	LED_Off(LED_GREEN);
+	LED_Off(LED_BLUE);
 }
 
 void fn_Compare(){
 	#ifdef PRINT_DEBUG
-	printf("MAIN: State COMPARE: ");
+	printf("MAIN: State COMPARE\n");
 	#endif
 	
 	uint8_t decision = img_capture(IMAGE_CAPTURE_COMPARE);
@@ -156,33 +131,58 @@ void fn_Compare(){
 		#endif
 	}
 	else if(decision==IMG_CAP_RET_CHANGE){
-		current_state = STATE_CHANGE;
+		current_state = STATE_FACEID;
+		LED_On(LED_BLUE);
+		LED_Off(LED_GREEN);
+		LED_Off(LED_RED);
 	}
 	else if(timer_count>=COMPS_PER_BASE_PIC){
 		current_state = STATE_PIC1;
+		LED_Off(LED_BLUE);
+		LED_Off(LED_GREEN);
+		LED_Off(LED_RED);
 	}
 }
 
-void fn_Change(){
+void fn_FaceID(){
 	#ifdef PRINT_DEBUG
-	printf("MAIN: State CHANGE\n");
+	printf("MAIN: State FACEID\n");
 	#endif
 
-	blink_count++;
-	if(blink_count>20){
-		blink_count = 0;
-		timer_count=0;
+	img_capture_free_space();
+	faceID_decision_t result = faceid_run();
+
+	if(result.decision >= 0){
+		printf("%s recognized!\n", result.name);
+		current_state = STATE_RECOGNIZED;
+		LED_On(LED_GREEN);
+		LED_Off(LED_BLUE);
+		LED_Off(LED_RED);
+	}
+	else {
 		current_state = STATE_PIC1;
-		LED_Off(LED2);
+		LED_Off(LED_BLUE);
+		LED_Off(LED_GREEN);
+		LED_Off(LED_RED);
 	}
-	else{
-		LED_Toggle(LED2);
-	}
+
+}
+
+void fn_Recgnized(){
+	#ifdef PRINT_DEBUG
+	printf("MAIN: Face RECOGNIZED\n");
+	#endif
+
+	img_capture_send_img();
+	MXC_Delay(SEC(5));
+
+	current_state = STATE_PIC1;
+	LED_Off(LED_BLUE);
+	LED_Off(LED_GREEN);
+	LED_Off(LED_RED);
 }
 
 int main(void) {
-
-	LED_Off(LED2);
 
     /* Enable cache */
     MXC_ICC_Enable(MXC_ICC1);
@@ -214,8 +214,6 @@ int main(void) {
     NVIC_EnableEVENT(WUT_IRQn);
 
 	__enable_irq();
-
-	img_capture_init();
 	
 	#ifdef PRINT_DEBUG
 	printf("Setup completed!\n");

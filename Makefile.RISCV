@@ -72,10 +72,12 @@ CNN_ROOT=../../../../Examples/$(TARGET)/CNN
 export CMSIS_ROOT
 # Source files for this test (add path to VPATH below)
 SRCS  = main_riscv.c
-SRCS += src/utils.c
 SRCS += src/img_capture.c
-SRCS += src/linked_list.c
 SRCS += src/flash_memory.c
+SRCS += src/esp32.c
+SRCS += src/cnn.c
+SRCS += src/embedding_process.c
+SRCS += src/faceID.c
 
 # Where to find source files for this test
 VPATH  = .
