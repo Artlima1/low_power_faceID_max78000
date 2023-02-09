@@ -19,7 +19,7 @@
 
 typedef struct {
     int8_t decision;
-    char * name;
+    char name[10];
 } faceID_decision_t;
 
 faceID_decision_t faceid_run(void);

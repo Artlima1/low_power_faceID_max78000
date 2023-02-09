@@ -109,7 +109,10 @@ void fn_Pic1(){
 	printf("MAIN: State PIC1\n");
 	#endif
 
-	img_capture(IMAGE_CAPTURE_BASE);
+	if(img_capture(IMAGE_CAPTURE_BASE) != IMG_CAP_RET_SUCCESS){
+		printf("Could not initialize the image capture\n");
+		return;
+	}
 	timer_count=0;
 
 	current_state = STATE_COMPARE;
@@ -149,7 +152,11 @@ void fn_FaceID(){
 	printf("MAIN: State FACEID\n");
 	#endif
 
-	img_capture_free_space();
+	if(img_capture_free_base() != IMG_CAP_RET_SUCCESS){
+		printf("Could Not store base!!\n");
+		while(1){}
+	}
+
 	faceID_decision_t result = faceid_run();
 
 	if(result.decision >= 0){
@@ -160,10 +167,20 @@ void fn_FaceID(){
 		LED_Off(LED_RED);
 	}
 	else {
-		current_state = STATE_PIC1;
-		LED_Off(LED_BLUE);
-		LED_Off(LED_GREEN);
-		LED_Off(LED_RED);
+		if(img_capture_rec_base() == IMG_CAP_RET_SUCCESS){
+			timer_count=0;
+			current_state = STATE_COMPARE;
+			LED_Off(LED_BLUE);
+			LED_Off(LED_GREEN);
+			LED_On(LED_RED);
+		}
+		else {
+			printf("Could not recuperate base\n");
+			current_state = STATE_PIC1;
+			LED_Off(LED_BLUE);
+			LED_Off(LED_GREEN);
+			LED_Off(LED_RED);
+		}
 	}
 
 }
@@ -173,13 +190,23 @@ void fn_Recgnized(){
 	printf("MAIN: Face RECOGNIZED\n");
 	#endif
 
-	img_capture_send_img();
+	// img_capture_send_img();
 	MXC_Delay(SEC(5));
 
-	current_state = STATE_PIC1;
-	LED_Off(LED_BLUE);
-	LED_Off(LED_GREEN);
-	LED_Off(LED_RED);
+	if(img_capture_rec_base() == IMG_CAP_RET_SUCCESS){
+		timer_count=0;
+		current_state = STATE_COMPARE;
+		LED_Off(LED_BLUE);
+		LED_Off(LED_GREEN);
+		LED_On(LED_RED);
+	}
+	else {
+		printf("Could not recuperate base\n");
+		current_state = STATE_PIC1;
+		LED_Off(LED_BLUE);
+		LED_Off(LED_GREEN);
+		LED_Off(LED_RED);
+	}
 }
 
 int main(void) {

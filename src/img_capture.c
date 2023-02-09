@@ -10,6 +10,7 @@
 #include "dma.h"
 #include "icc.h"
 #include "esp32.h"
+#include "flash_memory.h"
 
 #define S_MODULE_NAME "img_capture"
 // #define PRINT_DEBUG
@@ -136,9 +137,18 @@ uint8_t img_capture_init(void)
 
     ret = camera_setup(IMG_X_RES, IMG_Y_RES, PIXFORMAT_RGB565, FIFO_FOUR_BYTE, USE_DMA, dma_channel);
     if(ret != STATUS_OK){
-// #ifdef PRINT_DEBUG
+        #ifdef PRINT_DEBUG
         printf("Error in camera setup %d\n", ret);
-// #endif
+        #endif
+        return IMG_CAP_RET_ERROR;
+    }
+
+
+    ret = flash_memory_init(CLUSTER_SIZE);
+    if(ret != FM_RET_SUCCESS){
+        // #ifdef PRINT_DEBUG
+        printf("Error in flash memory setup\n");
+        // #endif
         return IMG_CAP_RET_ERROR;
     }
 
@@ -156,10 +166,32 @@ void img_capture_send_img(void){
     esp32_send_img(raw, size, w, h, PIXFORMAT_RGB565);
 }
 
-void img_capture_free_space(void){
+uint8_t img_capture_free_base(void){
+    uint8_t ret = flash_memory_write((uint8_t *) base_img, CLUSTER_SIZE, 0);
+    if(ret != FM_RET_SUCCESS){
+        return IMG_CAP_RET_ERROR;
+    }
+
     free(base_img);
+
+    return IMG_CAP_RET_SUCCESS;
 }
 
+uint8_t img_capture_rec_base(void){
+    if(base_img == NULL){
+        base_img = malloc(CLUSTER_SIZE);
+    }
+
+    if(base_img==NULL){
+        printf("Error in allocating memory for base\n");
+        return IMG_CAP_RET_ERROR;
+    }
+
+    flash_memory_read((uint8_t *) base_img, CLUSTER_SIZE, 0);
+
+    return IMG_CAP_RET_SUCCESS;
+
+}
 /************************************ Static Functions ******************************/
 
 static uint8_t take_base()
@@ -172,7 +204,6 @@ static uint8_t take_base()
     if(base_img == NULL){
         base_img = malloc(CLUSTER_SIZE);
     }
-
 
     if(base_img==NULL){
         printf("Error in allocating memory for base\n");

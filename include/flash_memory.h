@@ -24,49 +24,29 @@ enum {
 uint8_t flash_memory_init(uint32_t size);
 
 /**
- * @brief      Write the full data structure
- * @details    The details about it's size were specified in flash_memory_init().
- * 
- * @param      data   Address to the structre
- * @return     #FM_RET_SUCCESS If function is successful.
- * @return     #FM_RET_ERROR If there's an error writing data.
- *
- */
-uint8_t flash_memory_write_full(uint8_t * data);
-
-/**
- * @brief      Update just part of the full structre
- * @details    Allows to modify a specific field of your data without rewriting everything
+ * @brief      Write info in the flash space allocated
+ * @details    Allows to modify the data on the allocated memory in flash
  * 
  * @param      data   Address to copy from
- * @param[in]  size   Size of the information updated
- * @param[in]  offset Offset from the beggining of data structre
+ * @param[in]  size   Size of the data to be stored
+ * @param[in]  offset Offset from the beggining of data structure alocated in flash
  * @return     #FM_RET_SUCCESS If function is successful.
  * @return     #FM_RET_ERROR If there's an error writing data or the params passed
  * make data out of range.
  *
  */
-uint8_t flash_memory_write_field(uint8_t * data, uint32_t size, uint32_t offset);
+uint8_t flash_memory_write(uint8_t * data, uint32_t size, uint32_t offset);
 
 /**
- * @brief      Read the full data structure
- * @details    The details about it's size were specified in flash_memory_init().
- * 
- * @param      dest   Address to write to
- *
- */
-void flash_memory_read_full(uint8_t * dest);
-
-/**
- * @brief      Read just part of the full structre
- * @details    Allows to read a specific field of your data without reading everything
+ * @brief      Read data stored in flash
+ * @details    Allows to read data from the allocated memory in flash
  * 
  * @param      data   Address to copy to
- * @param[in]  size   Size of the information required
- * @param[in]  offset Offset from the beggining of data structre
+ * @param[in]  size   Size of the information to be read
+ * @param[in]  offset Offset from the beggining of data structure alocated in flash
  * @return     #FM_RET_SUCCESS If function is successful.
  * @return     #FM_RET_ERROR If there's an error reading data or the params passed
  * make data out of range.
  *
  */
-uint8_t flash_memory_read_field(uint8_t * dest, uint32_t size, uint32_t offset);
+uint8_t flash_memory_read(uint8_t * dest, uint32_t size, uint32_t offset);

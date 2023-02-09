@@ -22,8 +22,8 @@
 
 /************************************ VARIABLES ******************************/
 volatile uint32_t cnn_time; // Stopwatch
-static int8_t prev_decision = -2;
-static int8_t decision = -2;
+static int8_t prev_decision;
+static int8_t decision;
 static char *name;
 
 /********************************* Static Functions Declarations **************************/
@@ -40,6 +40,8 @@ faceID_decision_t faceid_run(void)
     int ret_c = 0;
 
     initialize_cnn();
+
+    decision = -5;
 
     uint8_t i;
     for(i=0; i<FACEID_TRIES; i++){
@@ -75,10 +77,13 @@ faceID_decision_t faceid_run(void)
         MXC_Delay(MSEC(1));
     }
 
-    free_database();
 
     ret.decision = decision;
-    ret.name = name;
+    if(decision >= 0){
+        strcpy(ret.name, name);
+    }
+
+    free_database();
     
     return ret;
 }
