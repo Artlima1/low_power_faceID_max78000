@@ -44,7 +44,7 @@ static EventGroupHandle_t s_wifi_event_group;
 #define BUF_SIZE (10050)
 #define RD_BUF_SIZE (BUF_SIZE)
 
-#define HOST_IP_ADDR "192.168.223.206"
+#define HOST_IP_ADDR "192.168.147.206"
 #define PORT 60996
 
 #define WIFI_SSID       "Arthur"
@@ -304,9 +304,9 @@ static void udp_client_task(void *pvParameters)
         addr_family = AF_INET;
         ip_protocol = IPPROTO_IP;
 
-        dest_addr.sin_addr.s_addr = inet_addr("192.168.223.206");
+        dest_addr.sin_addr.s_addr = inet_addr(HOST_IP_ADDR);
         dest_addr.sin_family = AF_INET;
-        dest_addr.sin_port = htons(60996);
+        dest_addr.sin_port = htons(PORT);
 
         int sock = socket(addr_family, SOCK_DGRAM, ip_protocol);
 
@@ -315,7 +315,7 @@ static void udp_client_task(void *pvParameters)
             break;
         }
 
-        ESP_LOGI(UDP_TAG, "Socket created, sending to %s:%d", "192.168.223.206", 60996);
+        ESP_LOGI(UDP_TAG, "Socket created, sending to %s:%d", HOST_IP_ADDR, PORT);
 
         ESP_LOGI(UDP_TAG, "UDP Client Configured");
 

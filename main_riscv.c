@@ -190,8 +190,8 @@ void fn_Recgnized(){
 	printf("MAIN: Face RECOGNIZED\n");
 	#endif
 
-	// img_capture_send_img();
-	MXC_Delay(SEC(5));
+	img_capture_send_img();
+	MXC_Delay(SEC(3));
 
 	if(img_capture_rec_base() == IMG_CAP_RET_SUCCESS){
 		timer_count=0;

@@ -3,7 +3,7 @@ from datetime import datetime
 import imgConverter
 import upload
 
-localIP     = "192.168.223.206"
+localIP     = "192.168.147.206"
 localPort   = 60996
 bufferSize  = 1024
 

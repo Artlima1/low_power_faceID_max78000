@@ -146,9 +146,9 @@ uint8_t img_capture_init(void)
 
     ret = flash_memory_init(CLUSTER_SIZE);
     if(ret != FM_RET_SUCCESS){
-        // #ifdef PRINT_DEBUG
+        #ifdef PRINT_DEBUG
         printf("Error in flash memory setup\n");
-        // #endif
+        #endif
         return IMG_CAP_RET_ERROR;
     }
 
