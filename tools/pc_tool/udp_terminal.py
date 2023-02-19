@@ -3,7 +3,7 @@ from datetime import datetime
 import imgConverter
 import upload
 
-localIP     = "192.168.147.206"
+localIP     = "192.168.121.206"
 localPort   = 60996
 bufferSize  = 1024
 
@@ -18,6 +18,7 @@ img_len = 0
 w = 0
 h = 0
 pixelformat = 0
+packets_recv=0
 
 # Listen for incoming datagrams
 while(True):
@@ -35,8 +36,11 @@ while(True):
         pixelformat = message[9]
         print("Img command", img_len, w, h, pixelformat)
         image = bytearray()
+        packets_recv = 1
     elif (img_len>0):
+        packets_recv+=1
         image += message
+        print(len(image))
         if (img_len == len(image)):
             img_name = datetime.now().strftime("%d.%m.%Y-%H:%M:%S")
             img_name += ".png"

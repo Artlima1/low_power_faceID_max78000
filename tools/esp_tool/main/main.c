@@ -44,7 +44,7 @@ static EventGroupHandle_t s_wifi_event_group;
 #define BUF_SIZE (10050)
 #define RD_BUF_SIZE (BUF_SIZE)
 
-#define HOST_IP_ADDR "192.168.147.206"
+#define HOST_IP_ADDR "192.168.121.206"
 #define PORT 60996
 
 #define WIFI_SSID       "Arthur"
@@ -180,7 +180,7 @@ static void uart_event_task(void *pvParameters)
                         uart_flush_input(UART1);
                     } else {
                         uart_read_bytes(UART1, dtmp, pos, 100 / portTICK_PERIOD_MS);
-                        // ESP_LOGI(TAG, "Got a UART mex of %d characters", pos);
+                        ESP_LOGI(TAG, "Got a UART mex of %d characters", pos);
 
                         switch (active_msg.msg_type)
                         {
@@ -358,7 +358,7 @@ void app_main(void)
     /* Configure parameters of an UART driver,
      * communication pins and install the driver */
     uart_config_t uart_config = {
-        .baud_rate = 14400,
+        .baud_rate = 9600,
         .data_bits = UART_DATA_8_BITS,
         .parity = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,

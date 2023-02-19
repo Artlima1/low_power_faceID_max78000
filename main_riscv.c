@@ -27,7 +27,7 @@
 /***** Definitions *****/
 #define OST_CLOCK_SOURCE MXC_TMR_32K_CLK // \ref mxc_tmr_clock_t
 // Parameters for Continuous timer
-#define OST_FREQ 10 // (Hz)
+#define OST_FREQ 1	 // (Hz)
 #define OST_TIMER MXC_TMR1 // Can be MXC_TMR0 through MXC_TMR5
 
 #define COMPS_PER_BASE_PIC 1000
