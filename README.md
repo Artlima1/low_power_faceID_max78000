@@ -86,4 +86,5 @@ Run: sudo python udp_terminal.py
 ## Links to Powerpoint and Youtube Video (not up to date)
 
 [PowerPoint](https://docs.google.com/presentation/d/1iDG8Hwt4incC3QIWbK0QsuGcLuzB3y-jmzu0u0kR7mA/edit?usp=sharing)  
-[Video](https://youtu.be/qPhET3jG1A0)
+[Video](https://youtu.be/qPhET3jG1A0)  
+[Report](./report/Embedded_Systems_Project_Report_XU_LIMA.pdf)
