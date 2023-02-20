@@ -2,7 +2,8 @@
 
 ## Introduction
 
-Our project aims to use the image capture capabilities of the MAX78000_FTHR to detect if there's significant change in the monitored area. Together with a ESP32 board, the system reacts to a change in the environment and sends the picure take to a cloud storage. Fixed at the location you want to monitor, it provides a low power solution to many different projects.
+This project is a low power FaceID application built for MAX78000 Featherboard and using a ESP32 board. Using only RISC-V core, it runs a chage detection algorithm using a simple image comparing algorithm. When a change is detected, the CNN accelerator is activated and tries to identidy a subject registered in its database. Upon recognition, the raw image is send via UART to the ESP32 board, that proceeds to forward it using a UDP request. Finally, when a image is received, it is saved locally as a .png file and uploaded to a Google Firebase Storage databse.
+This repository contains the MAX78000 project and, in tools folder, the ESP32 project and a simple python script to run an UDP server and retrieve the image.
 
 ## Requirements
 
@@ -14,7 +15,7 @@ The project uses MAX78000 series Dual-Core Ultra-Low-Power Microcontroller board
 
 To upload the firmware for the first time use, you can follow the instructions [here](https://github.com/MaximIntegratedAI/MaximAI_Documentation/blob/master/MAX78000_Feather/README.md#first-time-firmware-updates).
 
-Together with the FeatherBoard, there is an ESP32 DevKit V1 to provide wireless connectivity to the system.
+Together with the FeatherBoard, there is an ESP32 DevKit V1 to provide wireless connectivity to the system. Since the boards have different logic levels (MAX78000 used 1.8V and ESP32 uses 2.3V), a logic level shifter is also required to communicate the boards.
 
 ### Software Requirements
 
@@ -26,38 +27,52 @@ Python3 installed in PC to support the image transfer and upload tool. Also, to 
 firebase>=3.0.1
 firebase-admin>=6.0.1
 
+Finally, to store the images in Firebase, create a application in that service. Please refer to [this website](https://cloud.google.com/firestore/docs/client/get-firebase?hl=pt-br).
+
 ## Project Layout  
 
     risc_v_img_capture
-        ├─ .gitignore
-        ├─ Makefile
-        ├─ Makefile.ARM
-        ├─ Makefile.RISCV
-        ├─ README.md
-        ├─ include
-        │  ├─ MAXCAM_Debug.h
-        │  ├─ esp32.h
-        │  ├─ img_capture.h
-        │  └─ utils.h
-        ├─ main.c
-        ├─ main_riscv.c
-        ├─ risc_v_img_capture.launch
-        ├─ src
-        │  ├─ esp32.c
-        │  ├─ img_capture.c
-        │  └─ utils.c
-        └─ tools
-            ├─ esp_tool
-            │  ├─ CMakeLists.txt
-            │  ├─ main
-            │  │  ├─ CMakeLists.txt
-            │  │  ├─ main.c
-            │  │  └─ max78000_cmds.h
-            │  └─ sdkconfig
-            └─ pc_tool
-                ├─ imgConverter.py
-                ├─ test_udp.py
-                └─ upload.py
+    ├─ .gitignore
+    ├─ .project
+    ├─ Makefile
+    ├─ Makefile.ARM
+    ├─ Makefile.RISCV
+    ├─ README.md
+    ├─ gdb.txt
+    ├─ images
+    │  └─ max78000fthr.jpg
+    ├─ include
+    │  ├─ MAXCAM_Debug.h
+    │  ├─ cnn.h
+    │  ├─ embedding_process.h
+    │  ├─ embeddings.h
+    │  ├─ esp32.h
+    │  ├─ faceID.h
+    │  ├─ flash_memory.h
+    │  ├─ img_capture.h
+    │  └─ weights.h
+    ├─ main.c
+    ├─ main_riscv.c
+    ├─ risc_v_img_capture.launch
+    ├─ src
+    │  ├─ cnn.c
+    │  ├─ embedding_process.c
+    │  ├─ esp32.c
+    │  ├─ faceID.c
+    │  ├─ flash_memory.c
+    │  └─ img_capture.c
+    └─ tools
+    ├─ esp_tool
+    │  ├─ CMakeLists.txt
+    │  ├─ main
+    │  │  ├─ CMakeLists.txt
+    │  │  ├─ main.c
+    │  │  └─ max78000_cmds.h
+    │  └─ sdkconfig
+    └─ pc_tool
+        ├─ imgConverter.py
+        ├─ udp_terminal.py
+        └─ upload.py
 
 ## Getting Started  
 
@@ -86,5 +101,5 @@ Run: sudo python udp_terminal.py
 ## Links to Powerpoint and Youtube Video (not up to date)
 
 [PowerPoint](https://docs.google.com/presentation/d/1iDG8Hwt4incC3QIWbK0QsuGcLuzB3y-jmzu0u0kR7mA/edit?usp=sharing)  
-[Video](https://youtu.be/qPhET3jG1A0)  
+[Video](https://youtu.be/qPhET3jG1A0)
 [Report](./report/Embedded_Systems_Project_Report_XU_LIMA.pdf)
