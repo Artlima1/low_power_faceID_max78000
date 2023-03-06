@@ -1,4 +1,4 @@
-# MAX78000 Risc-V Environment change detector
+# Low Power Autonomous Face ID Application for MAX78000 running on RISC-V core
 
 ## Introduction
 
